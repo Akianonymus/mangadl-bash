@@ -50,7 +50,7 @@ _update() {
     declare repo="${REPO:-Akianonymus/mangadl-bash}" type_value="${TYPE_VALUE:-master}"
     if script="$(curl --compressed -Ls "https://raw.githubusercontent.com/${repo}/${type_value}/install.sh")"; then
         _clear_line 1
-        bash <(printf "%s\n" "${script}") "${job_string:-}"
+        bash <(printf "%s\n" "${script}") ${job_string:-} --skip-internet-check
     else
         _print_center "justify" "Error: Cannot download ${job} script." "="
         exit 1

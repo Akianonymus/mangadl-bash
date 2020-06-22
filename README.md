@@ -160,6 +160,12 @@ These are the flags that are available in the install.sh script:
 
     ---
 
+-   <strong>--skip-internet-check</strong>
+
+    Do not check for internet connection, recommended to use in sync jobs.
+
+    ---
+
 -   <strong>-D | --debug</strong>
 
     Display script command trace.

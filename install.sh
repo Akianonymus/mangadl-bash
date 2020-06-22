@@ -14,6 +14,7 @@ Options:\n
   -r | --repo <Username/reponame> - Upload script from your custom repo,e.g --repo Akianonymus/mangadl-bash, make sure your repo file structure is same as official repo.\n
   -B | --branch <branch_name> - Specify branch name for the github repo, applies to custom and default repo both.\n
   -s | --shell-rc <shell_file> - Specify custom rc file, where PATH is appended, by default script detects .zshrc and .bashrc.\n
+  --skip-internet-check - Like the flag says.\n
   -U | --uninstall - Uninstall the script and remove related files.\n
   -D | --debug - Display script command trace.\n
   -h | --help - Display usage instructions.\n" "${0##*/}" "${HOME}" "${HOME}"
@@ -639,15 +640,15 @@ _setup_arguments() {
                 _check_longoptions "${1}" "${2}"
                 SHELL_RC="${2}" && shift
                 ;;
+            --skip-internet-check)
+                SKIP_INTERNET_CHECK=":"
+                ;;
             -U | --uninstall)
                 UNINSTALL="true"
                 ;;
             -D | --debug)
                 DEBUG=true
                 export DEBUG
-                ;;
-            '')
-                _short_help
                 ;;
             *)
                 printf '%s: %s: Unknown option\nTry '"%s -h/--help"' for more information.\n' "${0##*/}" "${1}" "${0##*/}" && exit 1
@@ -687,7 +688,7 @@ main() {
             exit 1
         fi
     else
-        _check_internet
+        "${SKIP_INTERNET_CHECK:-_check_internet}"
         if type -a "${COMMAND_NAME}" &> /dev/null; then
             _update
         else
