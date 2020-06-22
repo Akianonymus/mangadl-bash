@@ -49,7 +49,7 @@ _search_manga() {
         printf "%s\n" "${list}"
     )"
 
-    TOTAL_SEARCHES="${#names[@]}"
+    TOTAL_SEARCHES="$(_count <<< "${names}")"
     export OPTION_NAMES TOTAL_SEARCHES
 }
 
