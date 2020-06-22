@@ -64,9 +64,8 @@ _update() {
 # Result: read description
 ###################################################
 _version_info() {
-    # shellcheck source=/dev/null
-    if [[ -f "${HOME}/.mangadl-bash/mangadl-bash.info" ]]; then
-        printf "%s\n" "$(< "${HOME}/.mangadl-bash/mangadl-bash.info")"
+    if [[ -f ${INFO_FILE} ]]; then
+        printf "%s\n" "$(< "${INFO_FILE}")"
     else
         _print_center "justify" "mangadl-bash is not installed system wide." "="
     fi
@@ -84,6 +83,12 @@ _version_info() {
 _setup_arguments() {
     unset ALL_SOURCES DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JOBS NUM_OF_SEARCH
     unset ASK_RANGE CONVERT_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
+
+    INFO_FILE="${HOME}/.mangadl-bash/mangadl-bash.info"
+    if [[ -r ${INFO_FILE} ]]; then
+        # shellcheck source=/dev/null
+        source "${INFO_FILE}" &> /dev/null || :
+    fi
 
     _check_longoptions() {
         { [[ -z ${2} ]] &&
@@ -122,9 +127,11 @@ _setup_arguments() {
                 ;;
             -s | --source)
                 _check_longoptions "${1}" "${2}"
+                _SOURCE="${2/default=/}"
+                { [[ ${2} = default* ]] && UPDATE_DEFAULT_SOURCE="_update_config"; } || :
                 for _source in "${ALL_SOURCES[@]}"; do
-                    if [[ "${_source}"-scraper.sh = "${2}"-scraper.sh ]]; then
-                        SOURCE="${2}" && shift
+                    if [[ "${_source}"-scraper.sh = "${_SOURCE}"-scraper.sh ]]; then
+                        SOURCE="${_SOURCE}" && shift
                         break
                     fi
                 done
@@ -205,10 +212,10 @@ _setup_arguments() {
     done
 
     SOURCE="${SOURCE:-manganelo}"
+    "${UPDATE_DEFAULT_SOURCE:-:}" SOURCE "${SOURCE}" "${INFO_FILE}"
     NUM_OF_SEARCH="${NUM_OF_SEARCH:-10}"
     { [[ ${NUM_OF_SEARCH} = all ]] && unset NUM_OF_SEARCH; } || :
     NO_OF_PARALLEL_JOBS="${NO_OF_PARALLEL_JOBS:-$(nproc)}"
-
     if [[ -z ${INPUT_ARRAY[*]} ]]; then
         _short_help
     else
@@ -290,7 +297,7 @@ _process_arguments() {
             option="${option// /}"
 
             if [[ -n ${option} ]]; then
-                if ! [[ ${OPTION_URLS} =~ ${option}." " ]]; then
+                if ! [[ ${OPTION_NAMES} =~ ${option}." " ]]; then
                     _print_center "justify" "Invalid option." "="
                     _newline "\n" && continue
                 fi

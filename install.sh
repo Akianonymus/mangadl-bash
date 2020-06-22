@@ -14,7 +14,6 @@ Options:\n
   -r | --repo <Username/reponame> - Upload script from your custom repo,e.g --repo Akianonymus/mangadl-bash, make sure your repo file structure is same as official repo.\n
   -B | --branch <branch_name> - Specify branch name for the github repo, applies to custom and default repo both.\n
   -s | --shell-rc <shell_file> - Specify custom rc file, where PATH is appended, by default script detects .zshrc and .bashrc.\n
-  -z | --config <fullpath> - Specify fullpath of the config file which will contain the credentials.\nDefault : %s/.mangadl-bash.conf
   -U | --uninstall - Uninstall the script and remove related files.\n
   -D | --debug - Display script command trace.\n
   -h | --help - Display usage instructions.\n" "${0##*/}" "${HOME}" "${HOME}"
@@ -399,7 +398,6 @@ _variables() {
     COMMAND_NAME="mangadl"
     INFO_PATH="${HOME}/.mangadl-bash"
     INSTALL_PATH="${HOME}/.mangadl-bash/bin"
-    CONFIG="${HOME}/.mangadl-bash.conf"
     TYPE="branch"
     TYPE_VALUE="master"
     SHELL_RC="$(_detect_profile)"
@@ -407,7 +405,7 @@ _variables() {
     if [[ -r ${INFO_PATH}/mangadl-bash.info ]]; then
         source "${INFO_PATH}"/mangadl-bash.info
     fi
-    __VALUES_ARRAY=(REPO COMMAND_NAME INSTALL_PATH CONFIG TYPE TYPE_VALUE SHELL_RC)
+    __VALUES_ARRAY=(REPO COMMAND_NAME INSTALL_PATH TYPE TYPE_VALUE SHELL_RC)
 }
 
 ###################################################
@@ -471,7 +469,7 @@ _start_interactive() {
 ###################################################
 # Install the script
 # Globals: 10 variables, 6 functions
-#   Variables - INSTALL_PATH, INFO_PATH, UTILS_FILE, COMMAND_NAME, SYNC_COMMAND_NAME, SHELL_RC, CONFIG,
+#   Variables - INSTALL_PATH, INFO_PATH, UTILS_FILE, COMMAND_NAME, SYNC_COMMAND_NAME, SHELL_RC,
 #               TYPE, TYPE_VALUE, REPO, __VALUES_ARRAY ( array )
 #   Functions - _print_center, _newline, _clear_line
 #               _get_latest_sha, _update_config
@@ -498,7 +496,6 @@ _install() {
         done
         _update_config LATEST_INSTALLED_SHA "${LATEST_CURRENT_SHA}" "${INFO_PATH}"/mangadl-bash.info
         _update_config PATH "${INSTALL_PATH}:${PATH}" "${INFO_PATH}"/mangadl-bash.binpath
-        printf "%s\n" "${CONFIG}" >| "${INFO_PATH}"/mangadl-bash.configpath
         if ! grep "source ${INFO_PATH}/mangadl-bash.binpath" "${SHELL_RC}" &> /dev/null; then
             printf "\nsource %s/mangadl-bash.binpath" "${INFO_PATH}" >> "${SHELL_RC}"
         fi
@@ -520,7 +517,7 @@ _install() {
 ###################################################
 # Update the script
 # Globals: 10 variables, 6 functions
-#   Variables - INSTALL_PATH, INFO_PATH, UTILS_FILE, COMMAND_NAME, SHELL_RC, CONFIG,
+#   Variables - INSTALL_PATH, INFO_PATH, UTILS_FILE, COMMAND_NAME, SHELL_RC,
 #               TYPE, TYPE_VALUE, REPO, __VALUES_ARRAY ( array )
 #   Functions - _print_center, _newline, _clear_line
 #               _get_latest_sha _update_config
@@ -551,7 +548,6 @@ _update() {
             done
             _update_config LATEST_INSTALLED_SHA "${LATEST_CURRENT_SHA}" "${INFO_PATH}"/mangadl-bash.info
             _update_config PATH "${INSTALL_PATH}:${PATH}" "${INFO_PATH}"/mangadl-bash.binpath
-            printf "%s\n" "${CONFIG}" >| "${INFO_PATH}"/mangadl-bash.configpath
             if ! grep "source ${INFO_PATH}/mangadl-bash.binpath" "${SHELL_RC}" &> /dev/null; then
                 printf "\nsource %s/mangadl-bash.binpath" "${INFO_PATH}" >> "${SHELL_RC}"
             fi
@@ -642,20 +638,6 @@ _setup_arguments() {
             -s | --shell-rc)
                 _check_longoptions "${1}" "${2}"
                 SHELL_RC="${2}" && shift
-                ;;
-            -z | --config)
-                _check_longoptions "${1}" "${2}"
-                if [[ -d "${2}" ]]; then
-                    printf "Error: -z/--config only takes filename as argument, given input ( %s ) is a directory." "${2}" 1>&2 && exit 1
-                elif [[ -f "${2}" ]]; then
-                    if [[ -r "${2}" ]]; then
-                        CONFIG="$(_full_path "${2}")" && shift
-                    else
-                        printf "Error: Current user doesn't have read permission for given config file ( %s ).\n" "${2}" 1>&2 && exit 1
-                    fi
-                else
-                    CONFIG="${2}" && shift
-                fi
                 ;;
             -U | --uninstall)
                 UNINSTALL="true"

@@ -11,13 +11,13 @@ _search_manga() {
     _clear_line 1
     SEARCH_JSON="${SEARCH_JSON//\},\{/$'\n'}" && SEARCH_JSON="${SEARCH_JSON//\}\]/$'\n'}"
 
-    for i in title slug status latestChapter; do
-        SEARCH_JSON="${SEARCH_JSON//\"${i}\"/$'\n'\"${i}\"}"
-    done
-
     if ! [[ ${SEARCH_JSON} =~ title ]]; then
         return 1
     fi
+
+    for i in title slug status latestChapter; do
+        SEARCH_JSON="${SEARCH_JSON//\"${i}\"/$'\n'\"${i}\"}"
+    done
 
     declare names slugs latest status
 
@@ -50,7 +50,7 @@ _search_manga() {
     )"
 
     TOTAL_SEARCHES="${#names[@]}"
-    export OPTIONS_URLS OPTION_NAMES TOTAL_SEARCHES
+    export OPTION_NAMES TOTAL_SEARCHES
 }
 
 _set_manga_variables() {

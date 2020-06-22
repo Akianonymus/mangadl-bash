@@ -4,11 +4,14 @@
 
 _search_manga() {
     declare input="${1// /_}" num_of_search="${2}" && declare -g SEARCH_HTML
-    SEARCH_HTML="$(curl -s --compressed https://mangakakalot.com/search/story/"${input}" | grep --no-group-separator "story_name" -A 12 ${num_of_search+-m ${num_of_search}})"
+    SEARCH_HTML="$(curl -# --compressed https://mangakakalot.com/search/story/"${input}")"
+    _clear_line 1
 
-    if [[ -z ${SEARCH_HTML} ]]; then
+    if [[ ${SEARCH_HTML} != *"story_name"* ]]; then
         return 1
     fi
+
+    SEARCH_HTML="$(grep --no-group-separator "story_name" -A 12 ${num_of_search+-m ${num_of_search}} <<< "${SEARCH_HTML}")"
 
     declare names urls latest updated && declare -g TOTAL_SEARCHES OPTION_URLS OPTION_NAMES
 
@@ -41,7 +44,7 @@ _search_manga() {
     )"
 
     TOTAL_SEARCHES="${#names[@]}"
-    export TOTAL_SEARCHES
+    export TOTAL_SEARCHES OPTION_NAMES
 }
 
 _set_manga_variables() {
@@ -56,7 +59,9 @@ _set_manga_variables() {
 
 _fetch_manga_details() {
     declare url="${1:-${URL}}" fetch_name="${2:-}" HTML
-    HTML="$(curl -s -# --compressed -L "${url}" -w "\n%{http_code}\n")"
+
+    HTML="$(curl -# --compressed -L "${url}" -w "\n%{http_code}\n")"
+    _clear_line 1
 
     if [[ ${HTML} = *"Sorry, the page you have requested cannot be found"* ]]; then
         return 1

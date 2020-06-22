@@ -1,27 +1,31 @@
 #!/usr/bin/env bash
 
-if ! type -p shfmt > /dev/null 2>&1; then
+if ! type -p shfmt &> /dev/null; then
     printf 'Install shfmt to format script\n\n'
     printf 'You can install it by bash <(curl -L -s https://gist.github.com/Akianonymus/56e80cc1aa469c5b74d41273e202cadd/raw/24bdfd9fd0ceca53b923fe4b694c03be0b208d2a/install-shfmt.sh), or\n'
     printf 'Check https://github.com/mvdan/sh/releases\n'
     exit 1
 fi
 
+STRING="${RANDOM}"
+
+trap 'rm -f "${STRING}".failedlog "${STRING}".passedlog' INT TERM EXIT
+
 for i in *sh */*sh; do
-    if ! shfmt -ci -sr -i 4 -w "$i"; then
-        printf "%s\n" "$i: Failed" >> failedlog
+    if ! shfmt -ci -sr -i 4 -w "${i}"; then
+        printf "%s\n" "${i}: Failed" >> "${STRING}".failedlog
     else
-        printf "%s\n" "$i: Passed" >> log
+        printf "%s\n" "${i}: Passed" >> "${STRING}".passedlog
     fi
 done
 
-if [[ -f failedlog ]]; then
+if [[ -f "${STRING}".failedlog ]]; then
     printf '\nSome checks have failed.\n\n'
-    cat failedlog && printf '\n'
-    cat log && rm -f failedlog log
+    printf "%s\n\n" "$(< "${STRING}".failedlog)"
+    printf "%s\n" "$(< "${STRING}".passedlog)"
     exit 1
 else
     printf 'All checks have passed.\n\n'
-    cat log && rm -f log
+    printf "%s\n" "$(< "${STRING}".passedlog)"
     exit 0
 fi
