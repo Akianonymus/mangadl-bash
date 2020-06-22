@@ -10,9 +10,10 @@ Usage: ${0##*/} manga_name/manga_url [options.. ]\n
 Options:\n
   -d | --directory - Custom workspace folder.\n
   -s | --source 'name of source' - Source where the input will be searched.\n\nAvailable sources: ${ALL_SOURCES[*]}\n
+      To change default source, use mangadl -s default=sourcename\n
   -n | --num 'no of searches' - No. of searches to show, default is 10.\n
   -p | --parallel 'no of jobs'  - No. of parallel jobs to use.\n
-  -r | --range - Custom range, will be asked later in script. Supports individual chapters or a range.\n
+  -r | --range - Custom range, will be asked later in script. Also supports multiple ranges.\n
   -c | --convert 'quality between 1 to 100' - Change quality of images by convert ( imagemagick ) .\n
   -z | --zip - Create zip of downloaded images.\n
   --upload - Upload created zip on pixeldrain.com.\n
