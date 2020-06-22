@@ -415,27 +415,33 @@ _variables() {
 # Result: read description
 ###################################################
 _download_files() {
+    utils_json="$(curl --compressed -# https://api.github.com/repos/"${REPO}"/contents/utils?ref="${TYPE_VALUE}")"
+    _clear_line 1
+    UTILS_URLS="$(_json_value download_url all all <<< "${utils_json}")"
+    UTILS_SHAS="$(_json_value sha all all <<< "${utils_json}")"
+
     cd "${INSTALL_PATH}" &> /dev/null
-    for url in "${UTILS_URLS[@]}"; do
+
+    while read -r -u 4 sha && read -r -u 5 url; do
         file="$(_basename "${url}")"
-        if [[ $(_tail 1 < "${file}") = "#${LATEST_CURRENT_SHA}" ]]; then
+        if [[ $(_tail 1 < "${file}") = "#${sha}" ]]; then
             continue
         fi
+        _print_center "justify" "Downloading" " ${file}.." "-"
         if ! curl -# --compressed -L "${url}" -o "${file}"; then
             return 1
         fi
-        printf "\n#%s\n" "${LATEST_CURRENT_SHA}" >> "${file}"
-        _clear_line 1
-    done
+        printf "\n#%s\n" "${sha}" >> "${file}"
+        for _ in {1..2}; do _clear_line 1; done
+    done 4<<< "${UTILS_SHAS}" 5<<< "${UTILS_URLS}"
+
     file="${COMMAND_NAME}"
-    if [[ $(_tail 1 < "${file}") = "#${LATEST_CURRENT_SHA}" ]]; then
-        return
-    fi
+    _print_center "justify" "Downloading" " ${file}.." "-"
     if ! curl --compressed -L -# "https://raw.githubusercontent.com/${REPO}/${LATEST_CURRENT_SHA}/mangadl.sh" -o "${COMMAND_NAME}"; then
         return 1
     fi
-    printf "\n#%s\n" "${LATEST_CURRENT_SHA}" >> "${file}"
-    _clear_line 1
+    for _ in {1..2}; do _clear_line 1; done
+
     cd - &> /dev/null
 }
 
@@ -485,8 +491,6 @@ _install() {
     LATEST_CURRENT_SHA="$(_get_latest_sha "${TYPE}" "${TYPE_VALUE}" "${REPO}")"
     _clear_line 1
     _print_center "justify" "Latest sha fetched." "=" && _print_center "justify" "Downloading scripts.." "-"
-    mapfile -t UTILS_URLS <<< "$(curl --compressed -# https://api.github.com/repos/"${REPO}"/contents/utils?ref="${TYPE_VALUE}" | _json_value download_url all all)"
-    _clear_line 1
     if _download_files; then
         if ! grep "UTILS_FOLDER=\"${INSTALL_PATH}\"" "${INSTALL_PATH}/${COMMAND_NAME}" &> /dev/null; then
             sed -i "2a UTILS_FOLDER=\"${INSTALL_PATH}\"" "${INSTALL_PATH}/${COMMAND_NAME}"
