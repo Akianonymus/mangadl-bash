@@ -4,7 +4,7 @@
 
 _search_manga() {
     declare input="${1}" num_of_search="${2}" post_data
-    post_data='{"query":"{search(x:m01,q:\"'${input}'\",genre:\"all\",mod:ALPHABET,limit:'${num_of_search}'){rows{title,slug,status,latestChapter}}}"}'
+    post_data='{"query":"{search(x:m01,q:\"'${input}'\",genre:\"all\",mod:ALPHABET'${num_of_search:+,limit:${num_of_search}}'){rows{title,slug,status,latestChapter}}}"}'
     SEARCH_JSON="$(curl -# --compressed https://api.mghubcdn.com/graphql \
         -d "${post_data}" \
         -H "Content-Type: application/json")"
@@ -19,50 +19,34 @@ _search_manga() {
         SEARCH_JSON="${SEARCH_JSON//\"${i}\"/$'\n'\"${i}\"}"
     done
 
-    declare names slugs latest status
-
-    names="$(_json_value title all all <<< "${SEARCH_JSON}")"
-    slugs="$(_json_value slug all all <<< "${SEARCH_JSON}")"
-    latest="$(_json_value latestChapter all all <<< "${SEARCH_JSON}")"
-    status="$(_json_value status all all <<< "${SEARCH_JSON}")"
+    mapfile -t names <<< "$(_json_value title all all <<< "${SEARCH_JSON}")"
+    mapfile -t slugs <<< "$(_json_value slug all all <<< "${SEARCH_JSON}")"
+    mapfile -t latest <<< "$(_json_value latestChapter all all <<< "${SEARCH_JSON}")"
+    mapfile -t status <<< "$(_json_value status all all <<< "${SEARCH_JSON}")"
 
     i=1
-    OPTION_URLS="$(
-        while read -r -u 4 line; do
-            num="$((i++))"
-            _slugs+="${num}. ${line}
-" > /dev/null
-        done 4<<< "${slugs}"
-        printf "%s\n" "${_slugs}"
-    )"
-
-    i=1
-    OPTION_NAMES="$(
-        while read -r -u 4 name && read -r -u 5 _latest && read -r -u 6 _status; do
-            num="$((i++))"
-            list+="${num}. ${name}
+    while read -r -u 4 name && read -r -u 5 _latest && read -r -u 6 _status; do
+        num="$((i++))"
+        OPTION_NAMES+=("${num}. ${name}
    Latest: ${_latest}
-   Status: ${_status}
+   Status: ${_status}")
+    done 4<<< "$(printf "%s\n" "${names[@]}")" 5<<< "$(printf "%s\n" "${latest[@]}")" 6<<< "$(printf "%s\n" "${status[@]}")"
 
-"
-        done 4<<< "${names}" 5<<< "${latest}" 6<<< "${status}"
-        printf "%s\n" "${list}"
-    )"
+    TOTAL_SEARCHES="${#names[@]}"
 
-    TOTAL_SEARCHES="$(_count <<< "${names}")"
     export OPTION_NAMES TOTAL_SEARCHES
 }
 
 _set_manga_variables() {
     declare option="${1}"
 
-    SLUG="$(: "$(grep -F "${option}. " <<< "${OPTION_URLS}")" && printf "%s\n" "${_/${option}. /}")"
+    SLUG="${slugs[$((option - 1))]}"
 
-    NAME="$(: "$(grep -F "${option}. " <<< "${OPTION_NAMES}")" && printf "%s\n" "${_/${option}. /}")"
+    NAME="${names[$((option - 1))]}"
 
-    LATEST="$(: "$(grep -A1 "${option}. " <<< "${OPTION_NAMES}" | grep -F 'Latest')" && printf "%s\n" "${_/*Latest: /}")"
+    LATEST="${latest[$((option - 1))]}"
 
-    export SLUG NAME
+    export NAME LATEST
 }
 
 _fetch_manga_details() {
@@ -71,11 +55,11 @@ _fetch_manga_details() {
 
     _print_center "justify" "Retrieving mangaid.." "-"
     json="$(curl -# --compressed https://api.mghubcdn.com/graphql \
-        -d '{"query":"{chapter(x:m01,slug:\"'"${slug}"'\",number:'"${LATEST:-1}"'){mangaID'${fetch_name+,manga\{title\}}'}}"}' \
+        -d '{"query":"{chapter(x:m01,slug:\"'"${slug}"'\",number:'"${LATEST:-1}"'){mangaID'${fetch_name:+,manga\{title\}}'}}"}' \
         -H "Content-Type: application/json")"
     for _ in {1..2}; do _clear_line 1; done
 
-    MANGAID="$([[ ${json} =~ [0-9.]+ ]] && printf "%s\n" "${BASH_REMATCH[0]}")"
+    MANGAID="$(_regex "${json}" '[0-9.]+' 0)"
 
     if [[ -n ${fetch_name} ]]; then
         NAME="$(: "${json//*title\":\"/}" && printf "%s\n" "${_/\"\}*/}")"
@@ -84,7 +68,7 @@ _fetch_manga_details() {
     _print_center "justify" "Retrieving manga" " chapters.." "-"
     mapfile -t PAGES <<< "$(curl -# --compressed https://api.mghubcdn.com/graphql \
         -d '{"query":"{chaptersByManga(mangaID:'"${MANGAID}"'){number}}"}' \
-        -H "Content-Type: application/json" | grep -o -E "[0-9.]+")"
+        -H "Content-Type: application/json" | grep -Eo "[0-9.]+")"
     for _ in {1..2}; do _clear_line 1; done
 
     export MANGAID PAGES NAME
@@ -116,19 +100,13 @@ _fetch_manga_chapters() {
         dl_chapters "{}" 
         ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
 
-        _wait_func() {
-            declare string
-            string="$(jobs)"
-            { [[ ${string// /} =~ unning.*xargs ]] && return 0; } || return 1
-        }
-
         _newline "\n"
 
         until [[ -f "${TMPFILE}".success || -f "${TMPFILE}".error ]]; do
             _bash_sleep 0.5
         done
 
-        until ! _wait_func; do
+        until [[ -z $(jobs -p) ]]; do
             SUCCESS_STATUS="$(_count < "${TMPFILE}".success)"
             ERROR_STATUS="$(_count < "${TMPFILE}".error)"
             _bash_sleep 1
@@ -182,17 +160,12 @@ _download_images() {
 
         printf "%s\n" "${PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS}" -i \
             wget -P "{}" -c -i "{}/{}"_images &> "${TMPFILE}".log &
-        _wait_func() {
-            declare string
-            string="$(jobs)"
-            { [[ ${string// /} =~ unning.*xargs ]] && return 0; } || return 1
-        }
 
         until [[ -f "${TMPFILE}".log ]]; do
             _bash_sleep 0.5
         done
 
-        until ! _wait_func; do
+        until [[ -z $(jobs -p) ]]; do
             SUCCESS_STATUS="$(grep -ic 'retrieved\|saved' "${TMPFILE}".log)"
             ERROR_STATUS="$(grep -ic 'ERROR 404' "${TMPFILE}".log)"
             _bash_sleep 1

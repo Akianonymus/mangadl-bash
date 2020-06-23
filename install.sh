@@ -197,10 +197,10 @@ _get_latest_sha() {
     declare LATEST_SHA
     case "${1:-${TYPE}}" in
         branch)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}" | _json_value sha)"
+            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}" | _json_value sha 1 1)"
             ;;
         release)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}" | _json_value tag_name)"
+            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}" | _json_value tag_name 1 1)"
             ;;
     esac
     printf "%s\n" "${LATEST_SHA}"

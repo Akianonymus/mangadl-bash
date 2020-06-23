@@ -11,37 +11,20 @@ _search_manga() {
         return 1
     fi
 
-    SEARCH_HTML="$(grep --no-group-separator "story_name" -A 12 ${num_of_search+-m ${num_of_search}} <<< "${SEARCH_HTML}")"
-
-    declare names urls latest updated && declare -g TOTAL_SEARCHES OPTION_URLS OPTION_NAMES
+    SEARCH_HTML="$(grep --no-group-separator "story_name" -A 12 ${num_of_search:+-m ${num_of_search}} <<< "${SEARCH_HTML}")"
 
     mapfile -t names <<< "$(grep --no-group-separator "story_name" -A 1 <<< "${SEARCH_HTML}" | grep -E "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -o '>.*<' | sed "s/\(^>\|<$\)//g")"
     mapfile -t urls <<< "$(grep --no-group-separator "story_name" -A 1 <<< "${SEARCH_HTML}" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*")"
-    mapfile -t latest <<< "$(: "$(grep --no-group-separator "story_chapter" -A 1 <<< "${SEARCH_HTML}" | grep -v '</a>' | grep -v "story_chapter" | grep -o 'title=\".*\"')" && printf "%s\n" "${_//title=/}")"
+    mapfile -t latest <<< "$(: "$(grep --no-group-separator "story_chapter" -A 1 <<< "${SEARCH_HTML}" | grep -v '</a>\|story_chapter' | grep -o 'title=\".*\"')" && printf "%s\n" "${_//title=/}")"
     mapfile -t updated <<< "$(grep -o "Updated.*[0-9]" <<< "${SEARCH_HTML}")"
 
     i=1
-    OPTION_URLS="$(
-        for line in "${urls[@]}"; do
-            num="$((i++))"
-            _urls+="${num}. ${line}
-" > /dev/null
-        done
-        printf "%s\n" "${_urls}"
-    )"
-
-    i=1
-    OPTION_NAMES="$(
-        while read -r -u 4 name && read -r -u 5 _latest && read -r -u 6 _update; do
-            num="$((i++))"
-            list+="${num}. ${name}
+    while read -r -u 4 name && read -r -u 5 _latest && read -r -u 6 _update; do
+        num="$((i++))"
+        OPTION_NAMES+=("${num}. ${name}
    Latest: ${_latest}
-   ${_update}
-
-"
-        done 4<<< "$(printf "%s\n" "${names[@]}")" 5<<< "$(printf "%s\n" "${latest[@]}")" 6<<< "$(printf "%s\n" "${updated[@]}")"
-        printf "%s\n" "${list}"
-    )"
+   ${_update}")
+    done 4<<< "$(printf "%s\n" "${names[@]}")" 5<<< "$(printf "%s\n" "${latest[@]}")" 6<<< "$(printf "%s\n" "${updated[@]}")"
 
     TOTAL_SEARCHES="${#names[@]}"
     export TOTAL_SEARCHES OPTION_NAMES
@@ -50,9 +33,9 @@ _search_manga() {
 _set_manga_variables() {
     option="${1}"
 
-    URL="$(: "$(grep -F "${option}. " <<< "${OPTION_URLS}")" && printf "%s\n" "${_/${option}. /}")"
+    URL="${urls[$((option - 1))]}"
 
-    NAME="$(: "$(grep -F "${option}. " <<< "${OPTION_NAMES}")" && printf "%s\n" "${_/${option}. /}")"
+    NAME="${names[$((option - 1))]}"
 
     export URL NAME
 }
@@ -68,7 +51,7 @@ _fetch_manga_details() {
     fi
 
     if [[ -n ${fetch_name} ]]; then
-        NAME="$(grep -F h1 <<< "${HTML}" | sed "s/\(<h1>\|<\/h1>\)//g")"
+        NAME="$(: "$(_regex "${HTML}" 'h1.*h1' 0)" && : "${_/h1>/}" && printf "%s\n" "${_/<\/h1/}")"
     fi
 
     if [[ ${url} =~ mangakakalot ]]; then
@@ -86,14 +69,14 @@ _fetch_manga_chapters() {
     SUCCESS_STATUS=0 ERROR_STATUS=0
 
     if [[ -n ${ASK_RANGE} ]]; then
-        : "https.*_($(printf "%s|" "${PAGES[@]}"))" && regex="${_//\|\)/\)}"
+        : "http.*chapter[_-]($(printf "%s|" "${PAGES[@]}"))" && regex="${_//\|\)/\)}"
         mapfile -t URL_PAGES <<< "$(printf "%s\n" "${URL_PAGES[@]}" | grep -Exo ''"${regex}"'')"
     fi
 
     if [[ -n ${PARALLEL_DOWNLOAD} ]]; then
         dl_chapters() {
             declare page url="${1}"
-            page="$(sed "s/.*\///" <<< "${1}" | grep -oE '[0-9.]+')"
+            page="$(_regex "$(_basename "${url}")" '[0-9.]+' 0)"
             if [[ -f "${page}/${page}"_chapter && $(_tail 1 < "${page}/${page}"_chapter) =~ 200 ]]; then
                 printf "1\n"
             else
@@ -107,16 +90,10 @@ _fetch_manga_chapters() {
 
         { [[ ${NO_OF_PARALLEL_JOBS} -gt ${#PAGES[@]} ]] && NO_OF_PARALLEL_JOBS="${#PAGES[@]}"; } || :
 
-        export -f dl_chapters _tail && export URL
+        export -f _basename dl_chapters _tail _regex
         printf "%s\n" "${URL_PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS}" -i bash -c '
         dl_chapters "{}" 
         ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
-
-        _wait_func() {
-            declare string
-            string="$(jobs)"
-            { [[ ${string// /} =~ unning.*xargs ]] && return 0; } || return 1
-        }
 
         _newline "\n"
 
@@ -124,7 +101,7 @@ _fetch_manga_chapters() {
             _bash_sleep 0.5
         done
 
-        until ! _wait_func; do
+        until [[ -z $(jobs -p) ]]; do
             SUCCESS_STATUS="$(_count < "${TMPFILE}".success)"
             ERROR_STATUS="$(_count < "${TMPFILE}".error)"
             _bash_sleep 1
@@ -140,7 +117,7 @@ _fetch_manga_chapters() {
         _newline "\n"
 
         for url in "${URL_PAGES[@]}"; do
-            page="$(sed "s/.*\///" <<< "${url}" | grep -oE '[0-9.]+')"
+            page="$(_regex "$(basename "${url}")" '[0-9.]+' 0)"
             if [[ -f "${page}/${page}"_chapter && $(_tail 1 < "${page}/${page}"_chapter) = 200 ]]; then
                 SUCCESS_STATUS="$((SUCCESS_STATUS + 1))"
             else
@@ -175,17 +152,12 @@ _download_images() {
 
         printf "%s\n" "${PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS}" -i \
             wget --referer="manganelo.com" -P "{}" -c -i "{}/{}"_images &> "${TMPFILE}".log &
-        _wait_func() {
-            declare string
-            string="$(jobs)"
-            { [[ ${string// /} =~ unning.*xargs ]] && return 0; } || return 1
-        }
 
         until [[ -f "${TMPFILE}".log ]]; do
             _bash_sleep 0.5
         done
 
-        until ! _wait_func; do
+        until [[ -z $(jobs -p) ]]; do
             SUCCESS_STATUS="$(grep -ic 'retrieved\|saved' "${TMPFILE}".log)"
             ERROR_STATUS="$(grep -ic 'ERROR 404' "${TMPFILE}".log)"
             _bash_sleep 1

@@ -102,7 +102,7 @@ _setup_arguments() {
     done
 
     url_regex='(http|https)://[a-zA-Z0-9./?=_%:-]*'
-    source_regex='(http|https)://('$(printf "%s|" "${ALL_SOURCES[@]}")examplemanga')[a-zA-Z0-9./?=_%:-]'
+    source_regex='(http|https)://.*('$(printf "%s|" "${ALL_SOURCES[@]}")examplemanga')[a-zA-Z0-9./?=_%:-]'
 
     while [[ $# -gt 0 ]]; do
         case "${1}" in
@@ -212,7 +212,7 @@ _setup_arguments() {
         shift
     done
 
-    SOURCE="${SOURCE:-manganelo}"
+    SOURCE="${SOURCE:-mangahub}"
     "${UPDATE_DEFAULT_SOURCE:-:}" SOURCE "${SOURCE}" "${INFO_FILE}"
     NUM_OF_SEARCH="${NUM_OF_SEARCH:-10}"
     { [[ ${NUM_OF_SEARCH} = all ]] && unset NUM_OF_SEARCH; } || :
@@ -271,7 +271,7 @@ _process_arguments() {
     for input in "${INPUT_ARRAY[@]}"; do
         if [[ ${input} =~ ${url_regex} ]]; then
             if [[ ${input} =~ ${source_regex} ]]; then
-                source_of_url="$(grep -Eo ''"$(printf "%s|" "${ALL_SOURCES[@]}")examplemanga"'' <<< "${input}")" || :
+                source_of_url="$(_regex "${input}" ''"$(printf "%s|" "${ALL_SOURCES[@]}")examplemanga"'' 0)"
                 _source_manga_util "${source_of_url}"
                 _print_center "justify" "Fetching manga details.." "-"
                 _fetch_manga_details "${input}" fetch_name || { _clear_line 1 && _print_center "justify" "Error: Invalid manga url." "=" && _newline "\n" && continue; }
@@ -292,13 +292,13 @@ _process_arguments() {
             _print_center "justify" "Source" ": ${SOURCE}" "="
             _print_center "justify" "${TOTAL_SEARCHES:-0} results found" "="
             { [[ -n ${_exit} ]] && _newline "\n" && continue; } || :
-            printf "%s\n\n" "${OPTION_NAMES}"
+            printf "\n%s\n" "${OPTION_NAMES[@]}" && _newline "\n"
 
             read -r -p "Choose: " option
             option="${option// /}"
 
             if [[ -n ${option} ]]; then
-                if ! [[ ${OPTION_NAMES} =~ ${option}." " ]]; then
+                if [[ ${option} -lt 0 || ${option} -gt ${#OPTION_NAMES[@]} ]]; then
                     _print_center "justify" "Invalid option." "="
                     _newline "\n" && continue
                 fi
@@ -310,6 +310,7 @@ _process_arguments() {
             _set_manga_variables "${option}"
 
             _print_center "justify" "${NAME}" "="
+
             _print_center "justify" "Fetching manga details.." "-"
             _fetch_manga_details "${URL}"
             _clear_line 1
@@ -401,24 +402,20 @@ _process_arguments() {
             export -f _dirname _basename _name
             printf "%s\n" "${IMAGES}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$(($(nproc) * 2))}" -i bash -c '
                 image="{}"
-                if convert "${image}" -quality "${CONVERT_QUALITY}" "${CONVERT_DIR}"/"$(_dirname "${image/.\//}")"/"$(_basename "$(_name "${image%.*}")")".jpg &> /dev/null; then
+                target_image="${CONVERT_DIR}"/"$(_dirname "${image/.\//}")"/"$(_basename "$(_name "${image%.*}")")".jpg
+                if convert "${image}" -quality "${target_image}" &> /dev/null; then
                     printf "1\n"
                 else
                     printf "2\n" 1>&2
+                    cp "${image}" "${target_image}"
                 fi
                 ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
-
-            _wait_func() {
-                declare string
-                string="$(jobs)"
-                { [[ ${string// /} =~ unning.*xargs ]] && return 0; } || return 1
-            }
 
             until [[ -f "${TMPFILE}".success || -f "${TMPFILE}".error ]]; do
                 _bash_sleep 0.5
             done
 
-            until ! _wait_func; do
+            until [[ -z $(jobs -p) ]]; do
                 SUCCESS_STATUS="$(_count < "${TMPFILE}".success)"
                 ERROR_STATUS="$(_count < "${TMPFILE}".error)"
                 _bash_sleep 1
@@ -448,14 +445,8 @@ _process_arguments() {
                 _bash_sleep 0.5
             done
 
-            _wait_func() {
-                declare string
-                string="$(jobs)"
-                { [[ ${string// /} =~ unning.*zip ]] && return 0; } || return 1
-            }
-
             TOTAL_ZIP_STATUS="$((TOTAL_IMAGES + TOTAL_CHAPTERS))"
-            until ! _wait_func; do
+            until [[ -z $(jobs -p) ]]; do
                 STATUS=$(grep 'up to date\|updating\|adding' "${TMPFILE}".log -c)
                 _bash_sleep 0.5
                 if [[ ${STATUS} != "${OLD_STATUS}" ]]; then
@@ -469,7 +460,7 @@ _process_arguments() {
 
             ZIP_SIZE="$(_bytes_to_human "$(wc -c < "${FULL_PATH_NAME}/${ZIPNAME}")")"
             _print_center "justify" "${ZIPNAME}" "="
-            _print_center "normal" "Path: \"${FULL_PATH_NAME/${CURRENT_DIR}\//}/${ZIPNAME}\" " " "
+            _newline "\n" && _print_center "normal" "Path: \"${FULL_PATH_NAME/${CURRENT_DIR}\//}/${ZIPNAME}\" " " " && _newline "\n"
             _print_center "justify" "${ZIP_SIZE}" "=" && _newline "\n"
 
             if [[ -n ${UPLOAD_ZIP} ]]; then

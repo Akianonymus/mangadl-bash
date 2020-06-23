@@ -9,7 +9,13 @@
 # Result: Read description.
 ###################################################
 _basename() {
-    printf "%s\n" "${1##*/}"
+    declare tmp
+
+    tmp=${1%"${1##*[!/]}"}
+    tmp=${tmp##*/}
+    tmp=${tmp%"${2/"$tmp"/}"}
+
+    printf '%s\n' "${tmp:-/}"
 }
 
 ###################################################
@@ -143,30 +149,6 @@ _count() {
 }
 
 ###################################################
-# Detect profile rc file for zsh and bash.
-# Detects for login shell of the user.
-# Globals: 2 Variables
-#   HOME, SHELL
-# Arguments: None
-# Result: On
-#   Success - print profile file
-#   Error   - print error message and exit 1
-###################################################
-_detect_profile() {
-    declare CURRENT_SHELL="${SHELL##*/}"
-    case "${CURRENT_SHELL}" in
-        'bash') DETECTED_PROFILE="${HOME}/.bashrc" ;;
-        'zsh') DETECTED_PROFILE="${HOME}/.zshrc" ;;
-        *) if [[ -f "${HOME}/.profile" ]]; then
-            DETECTED_PROFILE="${HOME}/.profile"
-        else
-            printf "No compaitable shell file\n" && exit 1
-        fi ;;
-    esac
-    printf "%s\n" "${DETECTED_PROFILE}"
-}
-
-###################################################
 # Alternative to dirname command
 # Globals: None
 # Arguments: 1
@@ -208,17 +190,6 @@ _display_time() {
 }
 
 ###################################################
-# Print extension of input
-# Globals: None
-# Arguments: 1
-#   ${1} = anything
-# Result: Read description.
-###################################################
-_extension() {
-    printf "%s\n" "${1##*.}"
-}
-
-###################################################
 # Print full path of a file/folder
 # Globals: 1 variable
 #   PWD
@@ -250,13 +221,29 @@ _get_latest_sha() {
     declare LATEST_SHA
     case "${1:-${TYPE}}" in
         branch)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}" | _json_value sha)"
+            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}" | _json_value sha 1 1)"
             ;;
         release)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}" | _json_value tag_name)"
+            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}" | _json_value tag_name 1 1)"
             ;;
     esac
-    echo "${LATEST_SHA}"
+    printf "%s\n" "${LATEST_SHA}"
+}
+
+###################################################
+# Alternative to head -n command
+# Globals: None
+# Arguments: 1  or pipe
+#   ${1} = file, _head 1 < file
+#          variable, _head 1 <<< variable
+#   pipe = echo something | _head 1
+# Result: Read description
+# Reference:
+#   https://github.com/dylanaraps/pure-bash-bible/blob/master/README.md#get-the-first-n-lines-of-a-file
+###################################################
+_head() {
+    mapfile -tn "$1" line
+    printf '%s\n' "${line[@]}"
 }
 
 ###################################################
@@ -287,7 +274,7 @@ _json_value() {
     declare LC_ALL=C num
     { [[ ${2} =~ ^([0-9]+)+$ ]] && no_of_lines="${2}"; } || :
     { [[ ${3} =~ ^([0-9]+)+$ ]] && num="${3}"; } || { [[ ${3} != all ]] && num=1; }
-    grep -o "\"${1}\"\:.*" ${no_of_lines+-m ${no_of_lines}} | sed -e "s/.*\"""${1}""\"://" -e 's/[",]*$//' -e 's/["]*$//' -e 's/[,]*$//' -e "s/\"//" -e "s/^ //" -n -e "${num}"p
+    grep -o "\"${1}\"\:.*" ${no_of_lines+-m ${no_of_lines}} | sed -e "s/.*\"""${1}""\"://" -e 's/[",]*$//' -e 's/["]*$//' -e 's/[,]*$//' -e "s/^\"//" -e "s/^ //" -n -e "${num}"p
 }
 
 ###################################################
@@ -365,6 +352,19 @@ _print_center() {
 }
 
 ###################################################
+# Match the two give strings and print the rematch
+# Globals: None
+# Arguments: 1
+#   ${1} = matching string
+#   ${2} = matching regex
+#   ${3} = no of match to show, optional
+# Result: read description
+###################################################
+_regex() {
+    [[ $1 =~ $2 ]] && printf '%s\n' "${BASH_REMATCH[${3:-0}]}"
+}
+
+###################################################
 # Remove duplicates, maintain the order as original.
 # Globals: None
 # Arguments: 1
@@ -408,7 +408,7 @@ _reverse() {
 #   pipe = echo something | _tail 1
 # Result: Read description
 # Reference:
-#   https://github.com/dylanaraps/pure-bash-bible
+#   https://github.com/dylanaraps/pure-bash-bible/blob/master/README.md#get-the-last-n-lines-of-a-file
 ###################################################
 _tail() {
     mapfile -tn 0 line
@@ -431,7 +431,7 @@ _timeout() {
     {
         { "${@}"; } &
         pid="${!}"
-        { read -t "${sleep:-10}" && kill -HUP "${pid}"; } &
+        { read -r -t "${sleep:-10}" && kill -HUP "${pid}"; } &
         watcher="${!}"
         if wait "${pid}" 2> /dev/null; then
             kill -9 "${watcher}"
