@@ -424,7 +424,7 @@ _download_files() {
 
     while read -r -u 4 sha && read -r -u 5 url; do
         file="$(_basename "${url}")"
-        if [[ $(_tail 1 < "${file}") = "#${sha}" ]]; then
+        if [[ -f ${file} && $(_tail 1 < "${file}") = "#${sha}" ]]; then
             continue
         fi
         _print_center "justify" "Downloading" " ${file}.." "-"
