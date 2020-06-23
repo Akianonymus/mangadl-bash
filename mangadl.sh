@@ -12,6 +12,7 @@ Options:\n
   -s | --source 'name of source' - Source where the input will be searched.\n\nAvailable sources: ${ALL_SOURCES[*]}\n
       To change default source, use mangadl -s default=sourcename\n
   -n | --num 'no of searches' - No. of searches to show, default is 10.\n
+      To change default no of searches, use mangadl -n default='no of searches'\n
   -p | --parallel 'no of jobs'  - No. of parallel jobs to use.\n
   -r | --range - Custom range, will be asked later in script. Also supports multiple ranges.\n
   -c | --convert 'quality between 1 to 100' - Change quality of images by convert ( imagemagick ) .\n
@@ -143,7 +144,9 @@ _setup_arguments() {
                 ;;
             -n | --num)
                 _check_longoptions "${1}" "${2}"
-                case "${2}" in
+                _NUM_OF_SEARCH="${2/default=/}"
+                { [[ ${2} = default* ]] && UPDATE_DEFAULT_NUM_OF_SEARCH="_update_config"; } || :
+                case "${_NUM_OF_SEARCH}" in
                     all | *[0-9]*)
                         NUM_OF_SEARCH="${2}"
                         ;;
@@ -215,6 +218,7 @@ _setup_arguments() {
     SOURCE="${SOURCE:-mangahub}"
     "${UPDATE_DEFAULT_SOURCE:-:}" SOURCE "${SOURCE}" "${INFO_FILE}"
     NUM_OF_SEARCH="${NUM_OF_SEARCH:-10}"
+    "${UPDATE_DEFAULT_NUM_OF_SEARCH:-:}" SOURCE "${SOURCE}" "${INFO_FILE}"
     { [[ ${NUM_OF_SEARCH} = all ]] && unset NUM_OF_SEARCH; } || :
     NO_OF_PARALLEL_JOBS="${NO_OF_PARALLEL_JOBS:-$(nproc)}"
     if [[ -z ${INPUT_ARRAY[*]} ]]; then

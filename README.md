@@ -246,6 +246,8 @@ These are the custom flags that are currently implemented:
 
     No. of searches to show, default is 10.
 
+    To change default no of searches, use mangadl -n default='no of searches'\n
+
     ---
 
 -   <strong>-p | --parallel <no_of_files_to_parallely_download></strong>
