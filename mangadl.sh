@@ -407,7 +407,7 @@ _process_arguments() {
             printf "%s\n" "${IMAGES}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$(($(nproc) * 2))}" -i bash -c '
                 image="{}"
                 target_image="${CONVERT_DIR}"/"$(_dirname "${image/.\//}")"/"$(_basename "$(_name "${image%.*}")")".jpg
-                if convert "${image}" -quality "${target_image}" &> /dev/null; then
+                if convert "${image}" -quality "${CONVERT_QUALITY}" "${target_image}" &> /dev/null; then
                     printf "1\n"
                 else
                     printf "2\n" 1>&2
