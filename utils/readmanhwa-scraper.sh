@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# Functions related to mangahub
+# Functions related to readmanhwa
 # shellcheck disable=SC2016
 
 _search_manga() {
-    declare input="${1}" num_of_search="${2}" post_data
-    post_data='{"query":"{search(x:m01,q:\"'${input}'\",genre:\"all\",mod:ALPHABET'${num_of_search:+,limit:${num_of_search}}'){rows{title,slug,status,latestChapter}}}"}'
-    SEARCH_JSON="$(curl -# --compressed https://api.mghubcdn.com/graphql \
-        -d "${post_data}" \
-        -H "Content-Type: application/json")"
+    declare input="${1}" num_of_search="${2}"
+    SEARCH_JSON="$(curl -# --compressed "https://readmanhwa.com/api/comics?nsfw=true&q=$(_url_encode "${input}")&per_page=${num_of_search}&sort=title" \
+        -H "X-NSFW: true" -H "Accept-Language: en")"
     _clear_line 1
-    SEARCH_JSON="${SEARCH_JSON//\},\{/$'\n'}" && SEARCH_JSON="${SEARCH_JSON//\}\]/$'\n'}"
-    SEARCH_JSON="$(sed -e "s/tags.*//g" <<< "${SEARCH_JSON}")"
+    SEARCH_JSON="${SEARCH_JSON//\}\]\},\{/$'\n'}"
+    # shellcheck disable=SC2001
+    SEARCH_JSON="$(sed -e "s/thumb_url.*//g" <<< "${SEARCH_JSON}")"
 
-    if ! [[ ${SEARCH_JSON} =~ title ]]; then
+    if [[ ${SEARCH_JSON} =~ \"total\":0 ]]; then
         return 1
     fi
 
-    for i in title slug status latestChapter; do
+    for i in title slug alternative_title description rewritten translated speechless uploaded_at pages favorites chapters_count status thumb_url; do
         SEARCH_JSON="${SEARCH_JSON//\"${i}\"/$'\n'\"${i}\"}"
     done
 
     mapfile -t names <<< "$(_json_value title all all <<< "${SEARCH_JSON}")"
     mapfile -t slugs <<< "$(_json_value slug all all <<< "${SEARCH_JSON}")"
-    mapfile -t latest <<< "$(_json_value latestChapter all all <<< "${SEARCH_JSON}")"
+    mapfile -t latest <<< "$(_json_value uploaded_at all all <<< "${SEARCH_JSON}")"
     mapfile -t status <<< "$(_json_value status all all <<< "${SEARCH_JSON}")"
 
     i=1
@@ -51,28 +50,19 @@ _set_manga_variables() {
 }
 
 _fetch_manga_details() {
-    declare slug fetch_name="${2:-}" json
+    declare slug last _pages
     slug="$(_basename "${1:-${SLUG}}")"
 
-    _print_center "justify" "Retrieving mangaid.." "-"
-    json="$(curl -# --compressed https://api.mghubcdn.com/graphql \
-        -d '{"query":"{chapter(x:m01,slug:\"'"${slug}"'\",number:'"${LATEST:-1}"'){mangaID'${fetch_name:+,manga\{title\}}'}}"}' \
-        -H "Content-Type: application/json")"
-    for _ in {1..2}; do _clear_line 1; done
-
-    MANGAID="$(_regex "${json}" '[0-9.]+' 0)"
-
-    if [[ -n ${fetch_name} ]]; then
-        NAME="$(: "${json//*title\":\"/}" && printf "%s\n" "${_/\"\}*/}")"
-    fi
-
     _print_center "justify" "Retrieving manga" " chapters.." "-"
-    mapfile -t PAGES <<< "$(curl -# --compressed https://api.mghubcdn.com/graphql \
-        -d '{"query":"{chaptersByManga(mangaID:'"${MANGAID}"'){number}}"}' \
-        -H "Content-Type: application/json" | grep -Eo "[0-9.]+")"
+    mapfile -t _pages <<< "$(curl -# --compressed -H "X-NSFW: true" "https://readmanhwa.com/api/comics/${slug}/chapters?nsfw=true" | grep -Eo "chapter-[0-9.]+" | grep -Eo "[0-9.]+")"
+    last=${#_pages[@]}
+    for ((i = last - 1; i >= 0; i--)); do
+        PAGES+=("${_pages[i]}")
+    done
+
     for _ in {1..2}; do _clear_line 1; done
 
-    export MANGAID PAGES NAME
+    export PAGES
 }
 
 _fetch_manga_chapters() {
@@ -81,12 +71,12 @@ _fetch_manga_chapters() {
     if [[ -n ${PARALLEL_DOWNLOAD} ]]; then
         dl_chapters() {
             declare dir="${1}"
-            if [[ -f "${page}/${page}"_chapter && $(_tail 1 < "${page}/${page}"_chapter) =~ 200 ]]; then
+            if [[ -f "${dir}/${dir}"_chapter && $(_tail 1 < "${dir}/${dir}"_chapter) =~ 200 ]]; then
                 printf "1\n"
             else
-                if curl -s -L --compressed https://api.mghubcdn.com/graphql \
-                    -d '{"query":"{chapter(x:m01,slug:\"'"${SLUG}"'\",number:'"${dir}"'){pages}}"}' \
-                    -H "Content-Type: application/json" -w "\n%{http_code}\n" >| "${dir}/${dir}"_chapter; then
+                if curl -s "https://readmanhwa.com/api/comics/${SLUG}/chapter-${dir}/images?nsfw=true" \
+                    -H "X-NSFW: true" \
+                    -w "\n%{http_code}\n" >| "${dir}/${dir}"_chapter; then
                     printf "1\n"
                 else
                     printf "2\n" 1>&2
@@ -126,9 +116,8 @@ _fetch_manga_chapters() {
             if [[ -f "${page}/${page}"_chapter && $(_tail 1 < "${page}/${page}"_chapter) =~ 200 ]]; then
                 SUCCESS_STATUS="$((SUCCESS_STATUS + 1))"
             else
-                if curl -s --compressed https://api.mghubcdn.com/graphql \
-                    -d '{"query":"{chapter(x:m01,slug:\"'"${SLUG}"'\",number:'"${page}"'){pages}}"}' \
-                    -H "Content-Type: application/json" \
+                if curl -s "https://readmanhwa.com/api/comics/${SLUG}/chapter-${page}/images?nsfw=true" \
+                    -H "X-NSFW: true" \
                     -w "\n%{http_code}\n" >| "${page}/${page}"_chapter; then
                     SUCCESS_STATUS="$((SUCCESS_STATUS + 1))"
                 else
@@ -146,7 +135,10 @@ _count_images() {
     TOTAL_IMAGES="$(: "$(for page in "${PAGES[@]}"; do
         {
             json_images="$(< "${page}/${page}"_chapter)"
-            printf "%b\n" "${json_images//:\\\"/$"\n"https://img.mghubcdn.com/file/imghub/}" | grep -Eo ".*(jpg|png)+" >| "${page}/${page}"_images
+            for i in source_url thumbnail_url; do
+                json_images="${json_images//\"${i}\"/$'\n'\"${i}\"}"
+            done
+            _json_value "source_url" all all <<< "${json_images//'\/'/\/}" >| "${page}/${page}"_images
             _count < "${page}/${page}"_images
         } &
     done)" && printf "%s\n" "$((${_//$'\n'/ + }))")"

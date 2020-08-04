@@ -483,3 +483,28 @@ _upload() {
     link="https://pixeldrain.com/api/file/${id}?download"
     printf "%s\n" "${link}"
 }
+
+###################################################
+# Encode the given string to parse properly in network requests
+# Globals: None
+# Arguments: 1
+#   ${1} = string
+# Result: print encoded string
+# Reference:
+#   https://github.com/dylanaraps/pure-bash-bible#percent-encode-a-string
+###################################################
+_url_encode() {
+    declare LC_ALL=C
+    for ((i = 0; i < ${#1}; i++)); do
+        : "${1:i:1}"
+        case "${_}" in
+            [a-zA-Z0-9.~_-])
+                printf '%s' "${_}"
+                ;;
+            *)
+                printf '%%%02X' "'${_}"
+                ;;
+        esac
+    done
+    printf '\n'
+}
