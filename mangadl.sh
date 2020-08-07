@@ -251,7 +251,7 @@ _source_manga_util() {
     utils_file="${UTILS_FOLDER}/${SOURCE}-scraper.sh"
     if [[ -r ${utils_file} ]]; then
         # shellcheck source=/dev/null
-        source "${utils_file}" || { printf "Error: Unable to source file ( %s ) .\n" "${utils_file}" 1>&2 && exit 1; }
+        . "${utils_file}" || { printf "Error: Unable to source file ( %s ) .\n" "${utils_file}" 1>&2 && exit 1; }
     else
         printf "Error: Utils file ( %s ) not found\n" "${utils_file}" 1>&2
         exit 1
@@ -489,7 +489,7 @@ main() {
     utils_file="${UTILS_FOLDER}/utils.sh"
     if [[ -r ${utils_file} ]]; then
         # shellcheck source=/dev/null
-        source "${utils_file}" || { printf "Error: Unable to source file ( %s ) .\n" "${utils_file}" 1>&2 && exit 1; }
+        . "${utils_file}" || { printf "Error: Unable to source file ( %s ) .\n" "${utils_file}" 1>&2 && exit 1; }
     else
         printf "Error: Utils file ( %s ) not found\n" "${utils_file}" 1>&2
         exit 1
