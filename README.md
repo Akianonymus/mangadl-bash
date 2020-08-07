@@ -10,6 +10,13 @@
 - Pretty logging
 - Easy to install and update
 
+## Supported sources
+
+- Manganelo / Mangakakalot
+- Mangahub
+- Mangafox / Fanfox
+- Readmanhwa
+
 ## Table of Contents
 
 - [Compatibility](#compatibility)
