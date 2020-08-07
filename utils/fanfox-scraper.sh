@@ -1,0 +1,1 @@
+mangafox-scraper.sh
