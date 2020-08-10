@@ -15,7 +15,7 @@ Options:\n
       To change default no of searches, use mangadl -n default='no of searches'\n
   -p | --parallel 'no of jobs'  - No. of parallel jobs to use.\n
   -r | --range - Custom range, will be asked later in script. Also supports multiple ranges.\n
-  -c | --convert 'quality between 1 to 100' - Change quality of images by convert ( imagemagick ) .\n
+  -c | --convert 'quality between 0 to 99' - Decrease quality of images by the given percentage using convert ( imagemagick ).\n
   -z | --zip - Create zip of downloaded images.\n
   --upload - Upload created zip on pixeldrain.com.\n
   --skip-internet-check - Like the flag says.\n
@@ -84,7 +84,7 @@ _version_info() {
 ###################################################
 _setup_arguments() {
     unset ALL_SOURCES DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JOBS NUM_OF_SEARCH
-    unset ASK_RANGE CONVERT_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
+    unset ASK_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
 
     INFO_FILE="${HOME}/.mangadl-bash/mangadl-bash.info"
     if [[ -r ${INFO_FILE} ]]; then
@@ -177,14 +177,14 @@ _setup_arguments() {
                 ;;
             -c | --convert)
                 _check_longoptions "${1}" "${2}"
-                CONVERT_QUALITY="${2}"
-                case "${CONVERT_QUALITY}" in
+                DECREASE_QUALITY="${2}"
+                case "${DECREASE_QUALITY}" in
                     '' | *[!0-9]*)
                         printf "\nError: -c/--convert value ranges between 1 to 100.\n"
                         exit 1
                         ;;
                     *)
-                        [[ ${CONVERT_QUALITY} -gt 100 ]] && { CONVERT_QUALITY=100 || CONVERT_QUALITY="${2}"; }
+                        [[ ${DECREASE_QUALITY} -gt 99 ]] && { DECREASE_QUALITY=99 || DECREASE_QUALITY="${2}"; }
                         ;;
                 esac
                 CONVERT="true" && CONVERT_DIR="converted"
@@ -399,19 +399,22 @@ _process_arguments() {
         _print_center "justify" "${TOTAL_IMAGES_SIZE}" "=" && _newline "\n"
 
         if [[ -n ${CONVERT} ]]; then
+            if command -v convert 1> /dev/null; then
             _print_center "justify" "Converting images.." "-"
-            _print_center "justify" "Quality: ${CONVERT_QUALITY}%" "=" && _newline "\n"
-            export CONVERT_QUALITY CONVERT_DIR
+            _print_center "justify" "Quality to decrease: ${DECREASE_QUALITY}%" "=" && _newline "\n"
+            export DECREASE_QUALITY CONVERT_DIR
             { mkdir -p "${CONVERT_DIR}" && cd "${CONVERT_DIR}" && mkdir -p "${PAGES[@]}" && cd - &> /dev/null; } || exit 1
             export -f _dirname _basename _name
             printf "%s\n" "${IMAGES}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$(($(nproc) * 2))}" -i bash -c '
                 image="{}"
                 target_image="${CONVERT_DIR}"/"$(_dirname "${image/.\//}")"/"$(_basename "$(_name "${image%.*}")")".jpg
-                if convert "${image}" -quality "${CONVERT_QUALITY}" "${target_image}" &> /dev/null; then
+                current_quality="$(identify  -format %Q "{}")"
+                new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"
+                if [[ ${new_quality} -lt ${current_quality} || ${image} =~ png ]] && convert "${image}" -quality "${new_quality}" "${target_image}" &> /dev/null; then
                     printf "1\n"
                 else
                     printf "2\n" 1>&2
-                    cp "${image}" "${target_image}"
+                    cp -u "${image}" "${target_image}"
                 fi
                 ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
 
@@ -425,7 +428,7 @@ _process_arguments() {
                 _bash_sleep 1
                 if [[ ${TOTAL_STATUS} != "$((SUCCESS_STATUS + ERROR_STATUS))" ]]; then
                     _clear_line 1
-                    _print_center "justify" "${SUCCESS_STATUS} success" " | ${ERROR_STATUS} failed" "="
+                    _print_center "justify" "${SUCCESS_STATUS} converted" " | ${ERROR_STATUS} copied" "="
                 else
                     break
                 fi
@@ -433,15 +436,17 @@ _process_arguments() {
             done
             rm -f "${TMPFILE}".success "${TMPFILE}".error
             for _ in {1..3}; do _clear_line 1; done
-            _print_center "justify" "Converted ${TOTAL_IMAGES}" " images ( ${CONVERT_QUALITY}% )" "="
+            _print_center "justify" "Converted ${TOTAL_IMAGES}" " images ( ${DECREASE_QUALITY}% )" "="
+            else
+            _print_center "justify" "Imagemagick not installed, skipping conversion.." "="
+            fi
         fi
-
         if [[ -n ${CREATE_ZIP} ]]; then
             _print_center "justify" "Creating zip.." "=" && _newline "\n"
 
             cd "${CONVERT_DIR:-.}" || exit
 
-            ZIPNAME="${NAME}${FINAL_RANGE+_${FINAL_RANGE}}${CONVERT_DIR+_${CONVERT_DIR}_${CONVERT_QUALITY}%}".zip
+            ZIPNAME="${NAME}${FINAL_RANGE+_${FINAL_RANGE}}${CONVERT_DIR+_decreased_${DECREASE_QUALITY}%}".zip
             # shellcheck disable=SC2086
             zip -x "*chapter" "*images" -u -q -r9 -lf "${TMPFILE}".log -li -la "${FULL_PATH_NAME}"/"${ZIPNAME}" "${PAGES[@]}" &
 

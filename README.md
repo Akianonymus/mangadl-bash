@@ -277,9 +277,11 @@ These are the custom flags that are currently implemented:
 
     ---
 
--   <strong>-c | --convert 'quality between 1 to 100'</strong>
+-   <strong>-c | --convert 'quality between 1 to 99'</strong>
 
-    Change quality of images by convert ( imagemagick ) .
+    Decrease quality of images by the given percentage using convert ( imagemagick ) .\n
+
+    Note: Output images are converted to jpg.
 
     ---
 
