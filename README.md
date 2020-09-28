@@ -1,4 +1,14 @@
-# mangadl-bash
+<h1 align="center">Manga Downloader</h1>
+<p align="center">
+<a href="https://github.com/Akianonymus/mangadl-bash/stargazers"><img src="https://img.shields.io/github/stars/Akianonymus/mangadl-bash.svg?color=blueviolet&style=for-the-badge" alt="Stars"></a>
+</p>
+<p align="center">
+<a href="https://www.codacy.com/manual/Akianonymus/mangadl-bash?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Akianonymus/mangadl-bash&amp;utm_campaign=Badge_Grade"><img alt="Codacy grade" src="https://img.shields.io/codacy/grade/62f44daae6f548978d7d3daae5d6074c/master?style=for-the-badge"></a>
+<a href="https://github.com/Akianonymus/mangadl-bash/actions"><img alt="Github Action Checks" src="https://img.shields.io/github/workflow/status/Akianonymus/mangadl-bash/Checks/master?label=CI%20Checks&style=for-the-badge"></a>
+</p>
+<p align="center">
+<a href="https://github.com/Akianonymus/mangadl-bash/blob/master/LICENSE"><img src="https://img.shields.io/github/license/Akianonymus/gdrive-downloader.svg?style=for-the-badge" alt="License"></a>
+</p>
 
 > mangadl-bash is a collection of bash compliant scripts to download mangas from different sources.
 
@@ -9,6 +19,9 @@
 - Parallel downloading
 - Pretty logging
 - Easy to install and update
+  - Self update
+  - [Auto update](#updation)
+  - Can be per-user and invoked per-shell, hence no root access required or global install with root access.
 
 ## Supported sources
 
@@ -76,18 +89,21 @@ Again, it has not been officially tested on windows, there shouldn't be anything
 
 The script explicitly requires the following programs:
 
-| Program       | Role In Script                                         |
-| ------------- | ------------------------------------------------------ |
-| Bash          | Execution of script                                    |
-| Curl          | Network requests for fetching manga details            |
-| wget          | Downloading images                                     |
-| xargs         | For parallel downloading                               |
-| mkdir         | To create folders                                      |
-| rm            | To remove files and folders                            |
-| grep          | Miscellaneous                                          |
-| sed           | Miscellaneous                                          |
-| zip           | For creating zip                                       |
-| convert       | For converting images ( -c / --convert option )        |
+| Program   | Role In Script                                         |
+| --------- | ------------------------------------------------------ |
+| bash      | Execution of script ( version >= 4 )                   |
+| curl      | Network requests for fetching manga details            |
+| sleep     | To sleep                                               |
+| wget      | Downloading images                                     |
+| xargs     | For parallel downloading                               |
+| mkdir     | To create folders                                      |
+| rm        | To remove files and folders                            |
+| grep      | Miscellaneous                                          |
+| sed       | Miscellaneous                                          |
+| zip       | For creating zip ( -z / --zip option )                 |
+| convert   | For converting images ( -c / --convert option )        |
+
+Note: zip and convert programs are optional, if not installed, then respective flags won't work, but rest of the script functions will be fine.
 
 ### Installation
 
@@ -109,33 +125,27 @@ For custom command name, repo, shell file, etc, see advanced installation method
 
 **Now, for automatic install script, there are two ways:**
 
+Note: When global install is done, then standalone script is used, and split files are used in per-user per-shell installation.
+
 #### Basic Method
 
 To install mangadl-bash in your system, you can run the below command:
 
 ```shell
-bash <(curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/install.sh)
+curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/release/install | bash -s
 ```
 
 and done.
 
 #### Advanced Method
 
-This section provides information on how to utilise the install.sh script for custom usescases.
+This section provides information on how to utilise the install script for custom usescases.
 
-These are the flags that are available in the install.sh script:
+These are the flags that are available in the install script:
 
 <details>
 
 <summary>Click to expand</summary>
-
--   <strong>-i | --interactive</strong>
-
-    Install script interactively, will ask for all the variables one by one.
-
-    Note: This will disregard all arguments given with below flags.
-
-    ---
 
 -   <strong>-p | --path <dir_name></strong>
 
@@ -167,9 +177,29 @@ These are the flags that are available in the install.sh script:
 
     ---
 
+-   <strong>-t | --time 'no of days'</strong>
+
+    Specify custom auto update time ( given input will taken as number of days ) after which script will try to automatically update itself.
+
+    Default: 5 ( 5 days )
+
+    ---
+
 -   <strong>--skip-internet-check</strong>
 
     Do not check for internet connection, recommended to use in sync jobs.
+
+    ---
+
+-   <strong>-q | --quiet</strong>
+
+    Only show critical error/sucess logs.
+
+    ---
+
+-   <strong>-U | --uninstall</strong>
+
+    Uninstall the script and remove related files.\n
 
     ---
 
@@ -190,7 +220,7 @@ Now, run the script and use flags according to your usecase.
 E.g:
 
 ```shell
-bash <(curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/install.sh) -r username/reponame -p somepath -s shell_file -c command_name -B branch_name
+curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/release/install | bash -s -- -r username/reponame -p somepath -s shell_file -c command_name -B branch_name
 ```
 </details>
 
@@ -208,7 +238,7 @@ There are two methods:
 
     <strong>If you use the this flag without actually installing the script,</strong>
 
-    <strong>e.g just by `bash mangadl.sh -u` then it will install the script or update if already installed.</strong>
+    <strong>e.g just by `bash mangadl.bash -u` then it will install the script or update if already installed.</strong>
 
 1.  Run the installation script again.
 
@@ -269,11 +299,17 @@ These are the custom flags that are currently implemented:
 
     ---
 
--   <strong>-r | --range</strong>
+-   <strong>-r | --range 'ranges'</strong>
 
-    Custom range, will be asked later in script.
+    Note: Arguments are optional
 
-    Supports individual chapters or a range. Also supports multiple ranges.
+    Custom range, can be given with this flag as argument, or if not given, then will be asked later in the script.
+
+    e.g: -r '1 5-10 11', this will download chapter number 1, 5 to 10 and 11.
+
+    If range is given with flag as an argument, the it is taken as postion of chapter of a specific manga.
+
+    But in case it is asked by script, then it takes literal values of the chapter ( which are usually numbers ), which will be shown on screen.
 
     ---
 
@@ -353,7 +389,11 @@ It will not download again if image is already present, thus avoiding bandwidth 
 
 If you have followed the automatic method to install the script, then you can automatically uninstall the script.
 
-There are two methods:
+There are three methods:
+
+1.  Automatic updates
+
+    By default, script checks for update after 3 days. Use -t / --time flag of install script to modify the interval.
 
 1.  Use the script itself to uninstall the script.
 
@@ -364,7 +404,7 @@ There are two methods:
 1.  Run the installation script again with -U/--uninstall flag
 
     ```shell
-    bash <(curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/install.sh) --uninstall
+    curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/master/release/install | bash -s --  --uninstall
     ```
 
     Yes, just run the installation script again with the flag and voila, it's done.
@@ -390,7 +430,11 @@ If you want support for a new source, then make a new issue along with the site 
 | Pull Requests | [![GitHub pull-requests](https://img.shields.io/github/issues-pr/Akianonymus/mangadl-bash.svg?label=&style=for-the-badge&color=orange)](https://GitHub.com/Akianonymus/mangadl-bash/issues?q=is%3Apr+is%3Aopen) | [![GitHub pull-requests closed](https://img.shields.io/github/issues-pr-closed/Akianonymus/mangadl-bash.svg?label=&color=success&style=for-the-badge)](https://GitHub.com/Akianonymus/mangadl-bash/issues?q=is%3Apr+is%3Aclosed) |
 | :-----------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 
-Submit patches to code or documentation as GitHub pull requests. Make sure to run format.sh before making a new pull request.
+Submit patches to code or documentation as GitHub pull requests. Make sure to run merge.bash and format.bash before making a new pull request.
+
+If using a code editor, then use shfmt plugin instead of format.bash
+
+All shellcheck warnings should also successfully pass, if needs to be disabled, proper explanation is needed.
 
 ## License
 

@@ -1,0 +1,49 @@
+name: Checks
+on:
+  push:
+    branches:
+      - 'master'
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    branches:
+      - 'master'
+    paths-ignore:
+      - '*.md'
+jobs:
+  test:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+    name: Installation test on ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
+    if: "!contains(github.event.head_commit.message, '[SKIP-CI]')"
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v1
+    - name: 'Install programs'
+      run: |
+          set -e
+          command -v brew && brew install bash
+          if command -v apt-get ; then
+              sudo apt-get install snapd -yqq
+              sudo snap install shfmt
+          elif command -v brew ; then
+              brew install shfmt
+          fi
+    - name: 'Install Manga downloader'
+      run: |
+          set -e
+          bash install.bash
+          PATH="${HOME}/.mangadl-bash:${PATH}"
+          mangadl --info
+          bash install.bash -U
+
+          sudo bash install.bash -c custom_mangadl -p /usr/local/bin
+          custom_mangadl --info
+          bash install.bash -U -c custom_mangadl
+    - name: 'Format and merge test'
+      run: |
+          set -e
+          bash merge.bash
+          { [ -n "$(git diff)" ] && printf "%s\n" "Error: Format scripts and run merge.bash before pushing the commits." && git diff && exit 1 ;} || :

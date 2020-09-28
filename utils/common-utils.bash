@@ -3,7 +3,6 @@
 
 ###################################################
 # Alternative to basename command
-# Globals: None
 # Arguments: 1
 #   ${1} = anything
 # Result: Read description.
@@ -19,21 +18,7 @@ _basename() {
 }
 
 ###################################################
-# Alternative to sleep command
-# Globals: None
-# Arguments: 1
-#   ${1} = Positive integer ( amount of time in seconds to sleep )
-# Result: Sleeps for the specified amount of time.
-# Reference:
-#   https://github.com/dylanaraps/pure-bash-bible#use-read-as-an-alternative-to-the-sleep-command
-###################################################
-_bash_sleep() {
-    read -rt "${1}" <> <(:) || :
-}
-
-###################################################
 # Convert bytes to human readable form
-# Globals: None
 # Required Arguments: 1
 #   ${1} = Positive integer ( bytes )
 # Result: Print human readable form.
@@ -51,8 +36,6 @@ _bytes_to_human() {
 
 ###################################################
 # Check for bash version >= 4.x
-# Globals: 1 Variable
-#   BASH_VERSINFO
 # Required Arguments: None
 # Result: If
 #   SUCEESS: Status 0
@@ -76,20 +59,21 @@ _check_bash_version() {
 _check_debug() {
     _print_center_quiet() { { [[ $# = 3 ]] && printf "%s\n" "${2}"; } || { printf "%s%s\n" "${2}" "${3}"; }; }
     if [[ -n ${DEBUG} ]]; then
-        set -x
+        set -x && PS4='-> '
         _print_center() { { [[ $# = 3 ]] && printf "%s\n" "${2}"; } || { printf "%s%s\n" "${2}" "${3}"; }; }
         _clear_line() { :; } && _newline() { :; }
     else
-        set +x
         if [[ -z ${QUIET} ]]; then
-            if _is_terminal; then
+            if _support_ansi_escapes; then
                 # This refreshes the interactive shell so we can use the ${COLUMNS} variable in the _print_center function.
                 shopt -s checkwinsize && (: && :)
-                if [[ ${COLUMNS} -lt 40 ]]; then
+                if [[ ${COLUMNS} -lt 45 ]]; then
                     _print_center() { { [[ $# = 3 ]] && printf "%s\n" "[ ${2} ]"; } || { printf "%s\n" "[ ${2}${3} ]"; }; }
                 else
                     trap 'shopt -s checkwinsize; (:;:)' SIGWINCH
                 fi
+                CURL_PROGRESS="-#" EXTRA_LOG="_print_center" CURL_PROGRESS_EXTRA="-#"
+                export CURL_PROGRESS EXTRA_LOG CURL_PROGRESS_EXTRA
             else
                 _print_center() { { [[ $# = 3 ]] && printf "%s\n" "[ ${2} ]"; } || { printf "%s\n" "[ ${2}${3} ]"; }; }
                 _clear_line() { :; }
@@ -98,24 +82,23 @@ _check_debug() {
         else
             _print_center() { :; } && _clear_line() { :; } && _newline() { :; }
         fi
+        set +x
     fi
 }
 
 ###################################################
 # Check internet connection.
 # Probably the fastest way, takes about 1 - 2 KB of data, don't check for more than 10 secs.
-# Globals: 2 functions
-#   _print_center, _clear_line
 # Arguments: None
 # Result: On
 #   Success - Nothing
 #   Error   - print message and exit 1
 ###################################################
 _check_internet() {
-    _print_center "justify" "Checking Internet Connection.." "-"
+    "${EXTRA_LOG:-:}" "justify" "Checking Internet Connection.." "-"
     if ! _timeout 10 curl -Is google.com; then
         _clear_line 1
-        printf "Error: Internet connection not available.\n"
+        "${QUIET:-_print_center}" "justify" "Error: Internet connection" " not available." "="
         exit 1
     fi
     _clear_line 1
@@ -123,7 +106,6 @@ _check_internet() {
 
 ###################################################
 # Move cursor to nth no. of line and clear it to the begining.
-# Globals: None
 # Arguments: 1
 #   ${1} = Positive integer ( line number )
 # Result: Read description
@@ -134,7 +116,6 @@ _clear_line() {
 
 ###################################################
 # Alternative to wc -l command
-# Globals: None
 # Arguments: 1  or pipe
 #   ${1} = file, _count < file
 #          variable, _count <<< variable
@@ -150,7 +131,6 @@ _count() {
 
 ###################################################
 # Alternative to dirname command
-# Globals: None
 # Arguments: 1
 #   ${1} = path of file or folder
 # Result: read description
@@ -172,7 +152,6 @@ _dirname() {
 ###################################################
 # Convert given time in seconds to readable form
 # 110 to 1 minute(s) and 50 seconds
-# Globals: None
 # Arguments: 1
 #   ${1} = Positive Integer ( time in seconds )
 # Result: read description
@@ -190,49 +169,35 @@ _display_time() {
 }
 
 ###################################################
-# Print full path of a file/folder
-# Globals: 1 variable
-#   PWD
-# Arguments: 1
-#   ${1} = name of file/folder
-# Result: print full path
-###################################################
-_full_path() {
-    [[ $# = 0 ]] && printf "%s: Missing arguments\n" "${FUNCNAME[0]}" && return 1
-    declare input="${1}"
-    if [[ -f ${input} ]]; then
-        printf "%s/%s\n" "$(cd "$(_dirname "${input}")" &> /dev/null && pwd)" "${input##*/}"
-    elif [[ -d ${input} ]]; then
-        printf "%s\n" "$(cd "${input}" &> /dev/null && pwd)"
-    fi
-}
-
-###################################################
 # Fetch latest commit sha of release or branch
-# Uses github rest api v3
-# Globals: None
+# Do not use github rest api because rate limit error occurs
 # Arguments: 3
 #   ${1} = "branch" or "release"
 #   ${2} = branch name or release name
-#   ${3} = repo name e.g labbots/google-drive-upload
+#   ${3} = repo name e.g Akianonymus/mangadl-bash
 # Result: print fetched sha
 ###################################################
 _get_latest_sha() {
     declare LATEST_SHA
     case "${1:-${TYPE}}" in
         branch)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}" | _json_value sha 1 1)"
+            LATEST_SHA="$(
+                : "$(curl --compressed -s https://github.com/"${3:-${REPO}}"/commits/"${2:-${TYPE_VALUE}}".atom -r 0-2000)"
+                : "$(printf "%s\n" "${_}" | grep -o "Commit\\/.*<" -m1 || :)" && : "${_##*\/}" && printf "%s\n" "${_%%<*}"
+            )"
             ;;
         release)
-            LATEST_SHA="$(curl --compressed -s https://api.github.com/repos/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}" | _json_value tag_name 1 1)"
+            LATEST_SHA="$(
+                : "$(curl -L --compressed -s https://github.com/"${3:-${REPO}}"/releases/"${2:-${TYPE_VALUE}}")"
+                : "$(printf "%s\n" "${_}" | grep "=\"/""${3:-${REPO}}""/commit" -m1 || :)" && : "${_##*commit\/}" && printf "%s\n" "${_%%\"*}"
+            )"
             ;;
     esac
-    printf "%s\n" "${LATEST_SHA}"
+    printf "%b" "${LATEST_SHA:+${LATEST_SHA}\n}"
 }
 
 ###################################################
 # Alternative to head -n command
-# Globals: None
 # Arguments: 1  or pipe
 #   ${1} = file, _head 1 < file
 #          variable, _head 1 <<< variable
@@ -247,39 +212,29 @@ _head() {
 }
 
 ###################################################
-# Check if script running in a terminal
-# Globals: 1 variable
-#   TERM
-# Arguments: None
-# Result: return 1 or 0
-###################################################
-_is_terminal() {
-    [[ -t 1 || -z ${TERM} ]] && return 0 || return 1
-}
-
-###################################################
 # Method to extract specified field data from json
 # Globals: None
 # Arguments: 2
 #   ${1} - value of field to fetch from json
-#   ${2} - Optional, no of lines to parse
+#   ${2} - Optional, no of lines to parse for the given field in 1st arg
 #   ${3} - Optional, nth number of value from extracted values, default it 1.
 # Input: file | here string | pipe
 #   _json_value "Arguments" < file
-#   _json_value "Arguments <<< "${varibale}"
+#   _json_value "Arguments" <<< "${varibale}"
 #   echo something | _json_value "Arguments"
 # Result: print extracted value
 ###################################################
 _json_value() {
-    declare LC_ALL=C num
-    { [[ ${2} =~ ^([0-9]+)+$ ]] && no_of_lines="${2}"; } || :
-    { [[ ${3} =~ ^([0-9]+)+$ ]] && num="${3}"; } || { [[ ${3} != all ]] && num=1; }
-    grep -o "\"${1}\"\:.*" ${no_of_lines+-m ${no_of_lines}} | sed -e "s/.*\"""${1}""\"://" -e 's/[",]*$//' -e 's/["]*$//' -e 's/[,]*$//' -e "s/^ //" -e 's/^"//' -n -e "${num}"p
+    declare num _tmp no_of_lines
+    { [[ ${2} -gt 0 ]] && no_of_lines="${2}"; } || :
+    { [[ ${3} -gt 0 ]] && num="${3}"; } || { [[ ${3} != all ]] && num=1; }
+    # shellcheck disable=SC2086
+    _tmp="$(grep -o "\"${1}\"\:.*" ${no_of_lines:+-m} ${no_of_lines})" || return 1
+    printf "%s\n" "${_tmp}" | sed -e "s/.*\"""${1}""\"://" -e 's/[",]*$//' -e 's/["]*$//' -e 's/[,]*$//' -e "s/^ //" -e 's/^"//' -n -e "${num}"p || :
 }
 
 ###################################################
 # Print name of input
-# Globals: None
 # Arguments: 1
 #   ${1} = anything
 # Result: Read description.
@@ -291,8 +246,6 @@ _name() {
 ###################################################
 # Print a text to center interactively and fill the rest of the line with text specified.
 # This function is fine-tuned to this script functionality, so may appear unusual.
-# Globals: 1 variable
-#   COLUMNS
 # Arguments: 4
 #   If ${1} = normal
 #      ${2} = text to print
@@ -313,9 +266,7 @@ _print_center() {
     declare -i TERM_COLS="${COLUMNS}"
     declare type="${1}" filler
     case "${type}" in
-        normal)
-            declare out="${2}" && symbol="${3}"
-            ;;
+        normal) declare out="${2}" && symbol="${3}" ;;
         justify)
             if [[ $# = 3 ]]; then
                 declare input1="${2}" symbol="${3}" TO_PRINT out
@@ -323,9 +274,9 @@ _print_center() {
                 { [[ ${#input1} -gt ${TO_PRINT} ]] && out="[ ${input1:0:TO_PRINT}..]"; } || { out="[ ${input1} ]"; }
             else
                 declare input1="${2}" input2="${3}" symbol="${4}" TO_PRINT temp out
-                TO_PRINT="$((TERM_COLS * 40 / 100))"
+                TO_PRINT="$((TERM_COLS * 47 / 100))"
                 { [[ ${#input1} -gt ${TO_PRINT} ]] && temp+=" ${input1:0:TO_PRINT}.."; } || { temp+=" ${input1}"; }
-                TO_PRINT="$((TERM_COLS * 55 / 100))"
+                TO_PRINT="$((TERM_COLS * 46 / 100))"
                 { [[ ${#input2} -gt ${TO_PRINT} ]] && temp+="${input2:0:TO_PRINT}.. "; } || { temp+="${input2} "; }
                 out="[${temp}]"
             fi
@@ -334,7 +285,7 @@ _print_center() {
     esac
 
     declare -i str_len=${#out}
-    [[ $str_len -ge $(((TERM_COLS - 1))) ]] && {
+    [[ $str_len -ge $((TERM_COLS - 1)) ]] && {
         printf "%s\n" "${out}" && return 0
     }
 
@@ -352,8 +303,16 @@ _print_center() {
 }
 
 ###################################################
+# Check if script terminal supports ansi escapes
+# Arguments: None
+# Result: return 1 or 0
+###################################################
+_support_ansi_escapes() {
+    { [[ -t 2 && -n ${TERM} && ${TERM} =~ (xterm|rxvt|urxvt|linux|vt) ]] && return 0; } || return 1
+}
+
+###################################################
 # Match the two give strings and print the rematch
-# Globals: None
 # Arguments: 1
 #   ${1} = matching string
 #   ${2} = matching regex
@@ -366,7 +325,6 @@ _regex() {
 
 ###################################################
 # Remove duplicates, maintain the order as original.
-# Globals: None
 # Arguments: 1
 #   ${@} = Anything
 # Result: read description
@@ -386,7 +344,6 @@ _remove_array_duplicates() {
 
 ###################################################
 # Reverse a array
-# Globals: None
 # Arguments: array
 #   ${@} = "${array[@]}"
 # Result: Read description
@@ -401,7 +358,6 @@ _reverse() {
 
 ###################################################
 # Alternative to tail -n command
-# Globals: None
 # Arguments: 1  or pipe
 #   ${1} = file, _tail 1 < file
 #          variable, _tail 1 <<< variable
@@ -423,30 +379,26 @@ _tail() {
 #   rest = command to execute
 # Result: Read description
 # Reference:
-#   https://stackoverflow.com/a/11056286
+#   https://stackoverflow.com/a/24416732
 ###################################################
 _timeout() {
-    declare -i sleep="${1}" && shift
-    declare -i pid watcher
+    declare timeout="${1:?Error: Specify Timeout}" && shift
     {
-        { "${@}"; } &
-        pid="${!}"
-        { read -r -t "${sleep:-10}" && kill -HUP "${pid}"; } &
-        watcher="${!}"
-        if wait "${pid}" 2> /dev/null; then
-            kill -9 "${watcher}"
-            return 0
-        else
-            return 1
-        fi
-    } &> /dev/null
+        "${@}" &
+        child="${!}"
+        trap -- "" TERM
+        {
+            sleep "${timeout}"
+            kill -9 "${child}"
+        } &
+        wait "${child}"
+    } 2>| /dev/null 1>&2
 }
 
 ###################################################
 # Config updater
 # Incase of old value, update, for new value add.
-# Globals: 1 function
-#   _remove_array_duplicates
+# Globals: None
 # Arguments: 3
 #   ${1} = value name
 #   ${2} = value
@@ -454,19 +406,17 @@ _timeout() {
 # Result: read description
 ###################################################
 _update_config() {
-    [[ $# -lt 3 ]] && printf "%s: Missing arguments\n" "${FUNCNAME[0]}" && return 1
-    declare VALUE_NAME="${1}" VALUE="${2}" CONFIG_PATH="${3}" FINAL=()
-    printf "" >> "${CONFIG_PATH}" # If config file doesn't exist.
-    mapfile -t VALUES < "${CONFIG_PATH}" && VALUES+=("${VALUE_NAME}=\"${VALUE}\"")
-    for i in "${VALUES[@]}"; do
-        [[ ${i} =~ ${VALUE_NAME}\= ]] && FINAL+=("${VALUE_NAME}=\"${VALUE}\"") || FINAL+=("${i}")
-    done
-    _remove_array_duplicates "${FINAL[@]}" >| "${CONFIG_PATH}"
+    [[ $# -lt 3 ]] && printf "Missing arguments\n" && return 1
+    declare value_name="${1}" value="${2}" config_path="${3}"
+    ! [ -f "${config_path}" ] && : >| "${config_path}" # If config file doesn't exist.
+    chmod u+w "${config_path}"
+    printf "%s\n%s\n" "$(grep -v -e "^$" -e "^${value_name}=" "${config_path}" || :)" \
+        "${value_name}=\"${value}\"" >| "${config_path}"
+    chmod u-w+r "${config_path}"
 }
 
 ###################################################
 # Upload a file to pixeldrain.com
-# Globals: None
 # Arguments: 1
 #   ${1} = filename
 # Result: print url link
@@ -486,9 +436,9 @@ _upload() {
 
 ###################################################
 # Encode the given string to parse properly in network requests
-# Globals: None
 # Arguments: 1
 #   ${1} = string
+#   ${2} = letter to not encode, optional
 # Result: print encoded string
 # Reference:
 #   https://github.com/dylanaraps/pure-bash-bible#percent-encode-a-string
@@ -497,8 +447,9 @@ _url_encode() {
     declare LC_ALL=C
     for ((i = 0; i < ${#1}; i++)); do
         : "${1:i:1}"
+        # shellcheck disable=SC2254
         case "${_}" in
-            [a-zA-Z0-9.~_-])
+            [a-zA-Z0-9.~_-${2}])
                 printf '%s' "${_}"
                 ;;
             *)
