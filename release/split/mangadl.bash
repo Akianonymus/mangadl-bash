@@ -14,7 +14,7 @@ Options:\n
       To change default no of searches, use mangadl -n default='no of searches'\n
   -p | --parallel 'no of jobs'  - No. of parallel jobs to use.\n
   -r | --range - Custom range, can be given with this flag as argument, or if not given, then will be asked later in the script.\n
-      e.g: -r '1 5-10 11', this will download chapter number 1, 5 to 10 and 11. For more info, see README.\n
+      e.g: -r '1 5-10 11 12-last last', this will download chapter number 1, 5 to 10 and 11. For more info, see README.\n
   -c | --convert 'quality between 0 to 99' - Decrease quality of images by the given percentage using convert ( imagemagick ).\n
   -z | --zip - Create zip of downloaded images.\n
   --upload - Upload created zip on pixeldrain.com.\n
@@ -81,8 +81,8 @@ fi
 exit 0
 }
 _setup_arguments(){
-unset DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JOBS NUM_OF_SEARCH
-unset ASK_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
+unset DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JOBS NUM_OF_SEARCH \
+MODIFY_RANGE GIVEN_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
 CONFIG="$HOME/.mangadl-bash.conf"
 [[ -f $CONFIG ]]&&. "$CONFIG"
 _check_longoptions(){
@@ -141,7 +141,7 @@ shift
 ;;
 -r|--range)MODIFY_RANGE="true"
 for i in $2;do
-if [[ $i =~ (^([0-9]+)-([0-9]+)+$|^([0-9]+)+$) ]];then
+if [[ $i =~ (^([0-9]+)-([0-9]+|last)+$|^([0-9]+|last)+$) ]];then
 GIVEN_RANGE+=("$i")
 fi
 done
@@ -255,59 +255,24 @@ if [[ -z ${GIVEN_RANGE[*]} ]];then
 _print_center "justify" "Input chapters" "-"
 printf "%b " "${PAGES[@]}"&&_newline "\n\n"
 "${QUIET:-_print_center}" "normal" " Give range, e.g: 1 2-10 69 " "-"
-until [[ -n $RANGE ]];do
-[[ -n $_RANGE ]]&&_clear_line 1
+until [[ -n ${GIVEN_RANGE[*]} ]];do
+[[ -n $_GIVEN_RANGE ]]&&_clear_line 1
 printf -- "-> "
-read -ra RANGE&&_RANGE=1
-done
-else
-unset range _tmp first second
-for range in "${GIVEN_RANGE[@]}";do
-if [[ $range =~ ^([0-9]+)-([0-9]+)+$ ]];then
-_tmp="${range%-*}"&&first="${PAGES[$((_tmp-1))]}"
-[[ -z $first ]]&&printf "%s\n" "Error: invalid chapter ( $first )."&&exit 1
-_tmp="${range#*-}"&&second="${PAGES[$((_tmp-1))]}"
-[[ -z $first ]]&&printf "%s\n" "Error: invalid chapter ( $second )."&&exit 1
-RANGE+=("$first-$second")
-elif [[ $range =~ ^([0-9]+)+$ ]];then
-first="${PAGES[$((range-1))]}"
-[[ -z $first ]]&&printf "%s\n" "Error: invalid chapter ( $first )."&&exit 1
-RANGE+=("$first")
-fi
+read -ra GIVEN_RANGE&&_GIVEN_RANGE=1
 done
 fi
-mapfile -t PAGES <<< "$(printf "%s\n" "${PAGES[@]}"|sed "s/\(^\|$\)/_-_-_/g")"
-for var in "${RANGE[@]}";do
+_check_and_create_range "${GIVEN_RANGE[@]}"||continue
+mapfile -t PAGES <<< "$(printf "%s\n" "${PAGES[@]}"|sed -e "s/^/_-_-_/g" -e "s/$/_-_-_/g")"
+for _range in "${RANGE[@]}";do
 regex=""
-if [[ $var =~ ^([0-9]+)-([0-9]+)+$ ]];then
-initial="${var/-*/}"
-final="${var/*-/}"
-if [[ $initial -gt $final ]];then
-initial="${var/*-/}"
-final="${var/-*/}"
-elif [[ $initial -eq $final ]];then
-regex="_-_-_${initial}_-_-_"
-fi
-regex="${regex:-_-_-_${initial}_-_-_.*_-_-_${final}_-_-_}"
-if [[ ${PAGES[*]} =~ $regex ]];then
-TEMP_PAGES+="$(: "${BASH_REMATCH[@]//_-_-_ _-_-_/$'\n'}"&&printf "%s\n" "${_//_-_-_/}")
+if [[ $_range == *-* ]];then
+regex="_-_-_${_range/-*/}_-_-_.*_-_-_${_range/*-/}_-_-_"
+[[ ${PAGES[*]} =~ $regex ]]&&TEMP_PAGES+="$(: "${BASH_REMATCH[@]//_-_-_ _-_-_/$'\n'}"&&printf "%s\n" "${_//_-_-_/}")
 "
 else
-_print_center "justify" "Invalid Range" " ( non-existent range )." "="
-exit 1
-fi
-elif [[ $var =~ ^([0-9]+)+$ ]];then
-regex="_-_-_${var}_-_-_"
-if [[ ${PAGES[*]} =~ $regex ]];then
-TEMP_PAGES+="$(: "${BASH_REMATCH[@]//_-_-_ _-_-_/$'\n'}"&&printf "%s\n" "${_//_-_-_/}")
+regex="_-_-_${_range}_-_-_"
+[[ ${PAGES[*]} =~ $regex ]]&&TEMP_PAGES+="$(: "${BASH_REMATCH[@]//_-_-_ _-_-_/$'\n'}"&&printf "%s\n" "${_//_-_-_/}")
 "
-else
-_print_center "justify" "Invalid chapter" " ( non-existent chapter )." "="
-exit 1
-fi
-else
-_print_center "justify" "Invalid Range" " ( wrong format )." "="
-exit 1
 fi
 done
 mapfile -t PAGES <<< "$TEMP_PAGES"
