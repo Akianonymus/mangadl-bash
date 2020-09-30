@@ -305,11 +305,17 @@ These are the custom flags that are currently implemented:
 
     Custom range, can be given with this flag as argument, or if not given, then will be asked later in the script.
 
-    e.g: -r '1 5-10 11', this will download chapter number 1, 5 to 10 and 11.
-
     If range is given with flag as an argument, the it is taken as postion of chapter of a specific manga.
 
-    But in case it is asked by script, then it takes literal values of the chapter ( which are usually numbers ), which will be shown on screen.
+    e.g: -r '1 5-10 11 15-last last', this will download chapter number 1, 5 to 10 and 11.
+
+    Note:
+
+    - 15-last type of range will pick from 15th number chapter to last.
+
+    - If just last is given, then it will download last chapter.
+
+    - In-case of 1-10 type of range, if last number ( i.e 10 ) exceeds total number of chapters, then all the rest chapters will be downloaded.
 
     ---
 

@@ -105,6 +105,60 @@ _check_internet() {
 }
 
 ###################################################
+# check the given ranges in ${PAGES[@]}
+# add proper entry to RANGE array from the PAGES array
+###################################################
+_check_and_create_range() {
+    for range in "${@}"; do
+        unset start end _start _end
+        if [[ "${range}" =~ ^([0-9]+)-([0-9]+|last)+$ ]]; then
+            _start="${range/-*/}" _end="${range/*-/}"
+            # check if range has last
+            [[ ${_end} = last ]] && _end="${#PAGES[@]}"
+            # reciprocate the ranges if start < end
+            if [[ ${_start} -gt ${_end} ]]; then
+                _start="${_end}"
+                _end="${range/-*/}"
+                # if equal, just add a single range to RANGE
+            elif [[ ${_start} -eq ${_end} ]]; then
+                [[ ${_start} -lt 1 ]] && _start=1
+                [[ ${_start} -gt ${#PAGES[@]} ]] && _start="${#PAGES[@]}"
+                start="${PAGES[$((_start - 1))]}"
+                [[ -z ${start} ]] && printf "%s\n" "Error: invalid chapter ( ${start} )." && return 1
+                RANGE+=("${start}")
+                continue
+            fi
+            # check ranges are within possible ranges
+            [[ ${_start} -lt 1 ]] && _start=1
+            # in case of end range exceeding total number of chapters, set last page to last possible chapter
+            [[ ${_end} -gt ${#PAGES[@]} ]] && _end="${#PAGES[@]}"
+            # handle a edgecase when only 1 chapters are available
+            [[ ${_start} = ${_end} ]] && unset _end
+
+            start="${PAGES[$((_start - 1))]}"
+            [[ -z ${start} ]] && printf "%s\n" "Error: invalid chapter ( ${start} )." && return 1
+            [[ -n ${_end} ]] && end="${PAGES[$((_end - 1))]}"
+
+            # add end range only if available
+            RANGE+=("${start}${end:+-${end}}")
+        elif [[ "${range}" =~ ^([0-9]+|last)+$ ]]; then
+            { [[ ${range} = last ]] && _start="${#PAGES[@]}"; } || {
+                [[ ${range} -lt 1 ]] && _start=1
+                [[ ${range} -gt ${#PAGES[@]} ]] && _start="${#PAGES[@]}"
+            }
+
+            _start="${_start:-${range}}"
+
+            start="${PAGES[$((_start - 1))]}"
+            [[ -z ${start} ]] && printf "%s\n" "Error: invalid chapter ( ${start} )." && return 1
+            RANGE+=("${start}")
+        else
+            printf "%s\n" "Error: Invalid range ( ${range} )." && return 1
+        fi
+    done
+}
+
+###################################################
 # Move cursor to nth no. of line and clear it to the begining.
 # Arguments: 1
 #   ${1} = Positive integer ( line number )
