@@ -42,6 +42,7 @@
   - [Installation](#installation)
     - [Basic Method](#basic-method)
     - [Advanced Method](#advanced-method)
+    - [Additional notes for installation](#additional-notes-for-installation)
   - [Updation](#updation)
 - [Usage](#usage)
   - [Download Script Custom Flags](#download-script-custom-flags)
@@ -224,6 +225,22 @@ curl --compressed -s https://raw.githubusercontent.com/Akianonymus/mangadl-bash/
 ```
 
 </details>
+
+### Additional notes for installation
+
+The system wide installation script run for two modes, global and non-global installation.
+
+#### Global
+In global installation, standalone script from release/standalone folder is used. For global installation, use --path flag with installation script.
+
+Given path should be present in ${PATH} variable and should be outside of ${HOME} directory.
+
+#### Non Global
+In non-global installtion, split minified files are used from release/split folder. No additional flag is necessary for this.
+
+It will be installed in user ${HOME} directory.
+
+**Note: It is recommended to use non-global installation because it supports incremental updates, so each update will only fetch what's updated, rather than all the scripts. Otherwise, both installations are fine.**
 
 ### Updation
 
