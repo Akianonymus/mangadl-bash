@@ -365,7 +365,7 @@ NAME="${names[$((option-1))]}"
 export SLUG NAME
 }
 _fetch_manga_details_mangafox(){
-declare slug fetch_name="${2:-}" HTML
+declare slug fetch_name="${2:-}" HTML&&unset VOLUMES
 slug="$(_basename "${1:-$SLUG}")"
 HTML="$(curl -# --compressed -L "http://m.fanfox.net/manga/$slug" -w "\n%{http_code}\n")"
 _clear_line 1
@@ -373,12 +373,15 @@ _clear_line 1
 if [[ -n $fetch_name ]];then
 NAME="$(: "$(grep 'title.*title' <<<"$HTML")"&&: "${_/<title>/}"&&printf "%s\n" "${_/<\/title>/}")"
 fi
-mapfile -t PAGES <<<"$(: "$(grep -oE 'c[0-9.]+[0-9]/1.html' <<<"$HTML")"&&: "${_//\/1.html/}"&&printf "%s\n" "${_//c0/}"|sed 1d)"
+! [[ $HTML == *"Volume Not Available"* ]]&&export VOLUMES="true"
+mapfile -t PAGES <<<"$(: "$(grep -oE "$slug.*c[0-9.]+[0-9]/1.html" <<<"$HTML")"&&: "${_//\/1.html/}"&&: "${_//$slug\//}"&&printf "%s\n" "${_//${VOLUMES:+\/}c0/${VOLUMES:+_}}"|sed 1d)"
 mapfile -t PAGES <<<"$(_reverse "${PAGES[@]}")"
 export PAGES REFERER="fanfox.net"
 }
 _download_chapter_mangafox(){
-curl -s "http://m.fanfox.net/roll_manga/$SLUG/c0$page/1.html" -w "\n%{http_code}\n"
+declare vol _page
+[[ -n $VOLUMES ]]&&vol="${page//_*/}" _page="${page//*_/}"
+curl -s "http://m.fanfox.net/roll_manga/$SLUG/${vol:+$vol/}c0${_page:-$page}/1.html" -w "\n%{http_code}\n"
 }
 _count_images_mangafox(){
 TOTAL_IMAGES="$(: "$(for page in "${PAGES[@]}";do
