@@ -586,6 +586,8 @@ The script can be used to search and download mangas from various sources.\n
 
 Supported sources: ${ALL_SOURCES[*]:-No sources available.}
 
+Default source: ${SOURCE:-Not set}
+
 Usage: ${0##*/} manga_name/manga_url [options.. ]\n
 Options:\n
   -d | --directory - Custom workspace folder.\n
@@ -666,6 +668,7 @@ unset DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JO
 MODIFY_RANGE GIVEN_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
 CONFIG="$HOME/.mangadl-bash.conf"
 [[ -f $CONFIG ]]&&. "$CONFIG"
+SOURCE="${SOURCE:-mangahub}"
 _check_longoptions(){
 [[ -z $2 ]]&&printf '%s: %s: option requires an argument\nTry '"%s -h/--help"' for more information.\n' "${0##*/}" "$1" "${0##*/}"&&exit 1
 return 0
