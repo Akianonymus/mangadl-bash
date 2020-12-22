@@ -454,7 +454,7 @@ _process_arguments() {
 
                 cd "${CONVERT_DIR:-.}" || exit
 
-                ZIPNAME="${NAME}${FINAL_RANGE+_${FINAL_RANGE}}${CONVERT_DIR+_decreased_${DECREASE_QUALITY}%}".zip
+                ZIPNAME="${NAME}${FINAL_RANGE+_${FINAL_RANGE}}${CONVERT_DIR+_decreased_${DECREASE_QUALITY}}".zip
                 # shellcheck disable=SC2086
                 zip -x "*chapter" "*images" -u -q -r9 -lf "${TMPFILE}".log -li -la "${FULL_PATH_NAME}"/"${ZIPNAME}" "${PAGES[@]}" &
                 pid="${!}"

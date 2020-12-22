@@ -924,7 +924,7 @@ if [[ -n $CREATE_ZIP ]];then
 if command -v zip 1>/dev/null;then
 _print_center "justify" "Creating zip.." "="&&_newline "\n"
 cd "${CONVERT_DIR:-.}"||exit
-ZIPNAME="$NAME${FINAL_RANGE+_$FINAL_RANGE}${CONVERT_DIR+_decreased_$DECREASE_QUALITY%}".zip
+ZIPNAME="$NAME${FINAL_RANGE+_$FINAL_RANGE}${CONVERT_DIR+_decreased_$DECREASE_QUALITY}".zip
 zip -x "*chapter" "*images" -u -q -r9 -lf "$TMPFILE".log -li -la "$FULL_PATH_NAME"/"$ZIPNAME" "${PAGES[@]}"&
 pid="$!"
 until [[ -f "$TMPFILE".log ]];do sleep 0.5;done
