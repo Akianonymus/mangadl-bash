@@ -337,7 +337,7 @@ _process_arguments() {
             _print_center "justify" "${NAME}" "="
 
             _print_center "justify" "Fetching manga details.." "-"
-            _fetch_manga_details_"${SOURCE}" "${URL}"
+            _fetch_manga_details_"${SOURCE}" "${URL:-${SLUG}}"
             _clear_line 1
         fi
 

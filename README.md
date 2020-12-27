@@ -29,6 +29,7 @@
 - Mangahub
 - Mangafox / Fanfox
 - Readmanhwa
+- Manga4life
 
 ## Table of Contents
 

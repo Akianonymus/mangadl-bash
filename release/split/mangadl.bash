@@ -245,7 +245,7 @@ done
 _set_manga_variables_"$SOURCE" "$option"
 _print_center "justify" "$NAME" "="
 _print_center "justify" "Fetching manga details.." "-"
-_fetch_manga_details_"$SOURCE" "$URL"
+_fetch_manga_details_"$SOURCE" "${URL:-$SLUG}"
 _clear_line 1
 fi
 export SOURCE
