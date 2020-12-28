@@ -93,10 +93,10 @@ _download_images() {
 
     shopt -s extglob
     # shellcheck disable=SC2086
-    IMAGES="$(_tmp="$(printf "%s/*+(jpg|png)\n" "${PAGES[@]}")" && printf "%b\n" ${_tmp})"
+    mapfile -t IMAGES <<< "$(_tmp="$(printf "%s/*+(jpg|png)\n" "${PAGES[@]}")" && printf "%b\n" ${_tmp})"
     # shellcheck disable=SC2086
     TOTAL_IMAGES_SIZE="$(
-        : "$(wc -c ${IMAGES} | _tail 1 | grep -Eo '[0-9]'+)"
+        : "$(wc -c "${IMAGES[@]}" | _tail 1 | grep -Eo '[0-9]'+)"
         printf "%s\n" "$(_bytes_to_human "${_}")"
     )"
     export TOTAL_IMAGES_SIZE IMAGES

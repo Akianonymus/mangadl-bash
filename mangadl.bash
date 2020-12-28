@@ -401,27 +401,27 @@ _process_arguments() {
         _print_center "justify" "Downloading" " images.." "-" && _newline "\n"
         _download_images
         _clear_line 1
-        TOTAL_IMAGES="$(_count <<< "${IMAGES}")"
+        TOTAL_IMAGES="${#IMAGES[@]}"
         _print_center "justify" "${TOTAL_IMAGES}" " images downloaded." "="
         _print_center "justify" "${TOTAL_IMAGES_SIZE}" "=" && _newline "\n"
 
         if [[ -n ${CONVERT} ]]; then
             if command -v convert 1> /dev/null; then
-                _print_center "justify" "Converting images.." "-"
+                _print_center "justify" "Converting chapters .." "-"
                 _print_center "justify" "Quality to decrease: ${DECREASE_QUALITY}%" "=" && _newline "\n"
                 export DECREASE_QUALITY CONVERT_DIR
                 { mkdir -p "${CONVERT_DIR}" && cd "${CONVERT_DIR}" && mkdir -p "${PAGES[@]}" && cd - &> /dev/null; } || exit 1
-                export -f _dirname _basename _name
-                printf "%s\n" "${IMAGES}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$((CORES * 2))}" -i bash -c '
-                image="{}"
-                target_image="${CONVERT_DIR}"/"$(_dirname "${image/.\//}")"/"$(_basename "$(_name "${image%.*}")")".jpg
-                current_quality="$(identify  -format %Q "{}")"
+                export -f _head
+                printf "%s\n" "${PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$((CORES * 2))}" -i bash -c '
+                page="{}"
+                shopt -s extglob
+                current_quality="$(identify  -format %Q "$(printf "%b\n" "${page}/"*+(jpg|png) | _head 1)")"
                 new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"
-                if [[ ${new_quality} -lt ${current_quality} || ${image} =~ png ]] && convert "${image}" -quality "${new_quality}" "${target_image}" &> /dev/null; then
+                if [[ ${new_quality} -lt ${current_quality} || ${image} =~ png ]] && mogrify -format jpg -path "${CONVERT_DIR}/${page}" -quality "${new_quality}" "${page}/"*+(jpg|png) &> /dev/null; then
                     printf "1\n"
                 else
                     printf "2\n" 1>&2
-                    cp -u "${image}" "${target_image}"
+                    cp -u "${page}/"*+(jpg|png) "${CONVERT_DIR}/${page}/"
                 fi
                 ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
                 pid="${!}"
@@ -435,8 +435,6 @@ _process_arguments() {
                     if [[ ${TOTAL_STATUS} != "$((SUCCESS_STATUS + ERROR_STATUS))" ]]; then
                         _clear_line 1
                         _print_center "justify" "${SUCCESS_STATUS} converted" " | ${ERROR_STATUS} copied" "="
-                    else
-                        break
                     fi
                     TOTAL_STATUS="$((SUCCESS_STATUS + ERROR_STATUS))"
                 done
@@ -456,7 +454,7 @@ _process_arguments() {
 
                 ZIPNAME="${NAME}${FINAL_RANGE+_${FINAL_RANGE}}${CONVERT_DIR+_decreased_${DECREASE_QUALITY}}".zip
                 # shellcheck disable=SC2086
-                zip -x "*chapter" "*images" -u -q -r9 -lf "${TMPFILE}".log -li -la "${FULL_PATH_NAME}"/"${ZIPNAME}" "${PAGES[@]}" &
+                zip -x "*chapter" "*images" -u -q -r9 -lf "${TMPFILE}".log -li -la "${FULL_PATH_NAME}"/"${ZIPNAME}" "${PAGES[@]}" &> /dev/null &
                 pid="${!}"
 
                 until [[ -f "${TMPFILE}".log ]]; do sleep 0.5; done
