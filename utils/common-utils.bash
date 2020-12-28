@@ -111,7 +111,7 @@ _check_internet() {
 _check_and_create_range() {
     for range in "${@}"; do
         unset start end _start _end
-        if [[ "${range}" =~ ^([0-9]+)-([0-9]+|last)+$ ]]; then
+        if [[ "${range}" =~ ^([0-9.]+)-([0-9.]+|last)+$ ]]; then
             _start="${range/-*/}" _end="${range/*-/}"
             # check if range has last
             [[ ${_end} = last ]] && _end="${#PAGES[@]}"
@@ -141,7 +141,7 @@ _check_and_create_range() {
 
             # add end range only if available
             RANGE+=("${start}${end:+-${end}}")
-        elif [[ "${range}" =~ ^([0-9]+|last)+$ ]]; then
+        elif [[ "${range}" =~ ^([0-9.]+|last)+$ ]]; then
             { [[ ${range} = last ]] && _start="${#PAGES[@]}"; } || {
                 [[ ${range} -lt 1 ]] && _start=1
                 [[ ${range} -gt ${#PAGES[@]} ]] && _start="${#PAGES[@]}"

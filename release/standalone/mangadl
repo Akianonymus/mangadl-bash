@@ -59,7 +59,7 @@ _clear_line 1
 _check_and_create_range(){
 for range in "$@";do
 unset start end _start _end
-if [[ $range =~ ^([0-9]+)-([0-9]+|last)+$ ]];then
+if [[ $range =~ ^([0-9.]+)-([0-9.]+|last)+$ ]];then
 _start="${range/-*/}" _end="${range/*-/}"
 [[ $_end == last ]]&&_end="${#PAGES[@]}"
 if [[ $_start -gt $_end ]];then
@@ -80,7 +80,7 @@ start="${PAGES[$((_start-1))]}"
 [[ -z $start ]]&&printf "%s\n" "Error: invalid chapter ( $start )."&&return 1
 [[ -n $_end ]]&&end="${PAGES[$((_end-1))]}"
 RANGE+=("$start${end:+-$end}")
-elif [[ $range =~ ^([0-9]+|last)+$ ]];then
+elif [[ $range =~ ^([0-9.]+|last)+$ ]];then
 { [[ $range == last ]]&&_start="${#PAGES[@]}";}||{
 [[ $range -lt 1 ]]&&_start=1
 [[ $range -gt ${#PAGES[@]} ]]&&_start="${#PAGES[@]}"
