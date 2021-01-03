@@ -32,7 +32,7 @@ HTML="$(curl -# --compressed -L "$url" -w "\n%{http_code}\n")"
 _clear_line 1
 [[ $HTML == *"Sorry, the page you have requested cannot be found"* ]]&&return 1
 if [[ -n $fetch_name ]];then
-NAME="$(: "$(_regex "$HTML" 'h1.*h1' 0)"&&: "${_/h1>/}"&&printf "%s\n" "${_/<\/h1/}")"
+NAME="$(: "$(grep -o 'h1>.*</h1' <<< "$HTML")"&&: "${_//*h1>/}"&&printf "%s\n" "${_//<\/h1*/}")"
 fi
 if [[ $url =~ mangakakalot ]];then
 mapfile -t URL_PAGES <<< "$(grep -F 'div class="row"' -A 1 <<< "$HTML"|grep -Eo "(http|https)://mangakakalot[a-zA-Z0-9./?=_%:-]*")"

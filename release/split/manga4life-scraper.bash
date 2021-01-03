@@ -66,7 +66,7 @@ HTML="$(curl -# --compressed "$url" -w "\n%{http_code}\n")"
 _clear_line 1
 [[ $HTML == *"We're sorry, the page you"* ]]&&return 1
 if [[ -n $fetch_name ]];then
-NAME="$(: "$(_regex "$HTML" 'h1.*h1' 0)"&&: "${_/*h1>/}"&&printf "%s\n" "${_/<\/h1*/}")"
+NAME="$(: "$(grep -o 'h1>.*</h1' <<< "$HTML")"&&: "${_//*h1>/}"&&printf "%s\n" "${_//<\/h1*/}")"
 fi
 mapfile -t _PAGES <<< "$(grep 'vm.Chapters = ' <<< "$HTML"|grep -Eo '[0-9]+{6}')"
 mapfile -t PAGES <<< "$(printf "%s\n" "${_PAGES[@]}"|sed -E -e "s/^[0-9]//g" -e "s/[1-9]$/.&/g" -e "s/0$//g" -e "s/^0*//g"|grep -Eo '[0-9.]+')"

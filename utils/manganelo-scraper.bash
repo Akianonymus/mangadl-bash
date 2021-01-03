@@ -47,7 +47,7 @@ _fetch_manga_details_manganelo() {
     [[ ${HTML} = *"Sorry, the page you have requested cannot be found"* ]] && return 1
 
     if [[ -n ${fetch_name} ]]; then
-        NAME="$(: "$(_regex "${HTML}" 'h1.*h1' 0)" && : "${_/h1>/}" && printf "%s\n" "${_/<\/h1/}")"
+        NAME="$(: "$(grep -o 'h1>.*</h1' <<< "${HTML}")" && : "${_//*h1>/}" && printf "%s\n" "${_//<\/h1*/}")"
     fi
 
     if [[ ${url} =~ mangakakalot ]]; then
