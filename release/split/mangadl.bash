@@ -17,6 +17,7 @@ Options:\n
   -p | --parallel 'no of jobs'  - No. of parallel jobs to use.\n
   -r | --range - Custom range, can be given with this flag as argument, or if not given, then will be asked later in the script.\n
       e.g: -r '1 5-10 11 12-last last', this will download chapter number 1, 5 to 10 and 11. For more info, see README.\n
+  -ra | --range-absolute - This is same as range flag except it uses the given range as the absolute number present on the respective website. For more info, see README.\n
   -c | --convert 'quality between 0 to 99' - Decrease quality of images by the given percentage using convert ( imagemagick ).\n
   -z | --zip - Create zip of downloaded images.\n
   --upload - Upload created zip on pixeldrain.com.\n
@@ -84,7 +85,7 @@ exit 0
 }
 _setup_arguments(){
 unset DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JOBS NUM_OF_SEARCH \
-MODIFY_RANGE GIVEN_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
+MODIFY_RANGE GIVEN_RANGE ABSOLUTE_GIVEN_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
 CONFIG="$HOME/.mangadl-bash.conf"
 [[ -f $CONFIG ]]&&. "$CONFIG"
 SOURCE="${SOURCE:-mangahub}"
@@ -142,13 +143,23 @@ esac
 PARALLEL_DOWNLOAD="true"&&export PARALLEL_DOWNLOAD
 shift
 ;;
--r|--range)MODIFY_RANGE="true"
+-r|--range)MODIFY_RANGE="true" RANGE_MODE="relative" do_shift=""
 for i in $2;do
 if [[ $i =~ (^([0-9]+)-([0-9]+|last)+$|^([0-9]+|last)+$) ]];then
-GIVEN_RANGE+=("$i")
+RELATIVE_RANGE+=("$i")
+do_shift=1
 fi
 done
-[[ -n ${GIVEN_RANGE[*]} ]]&&shift
+[[ -n $do_shift ]]&&shift
+;;
+-ra|--range-absolute)MODIFY_RANGE="true" RANGE_MODE="absolute" do_shift=""
+for i in $2;do
+if [[ $i =~ (^([0-9.]+)-([0-9.]+|last)+$|^([0-9.]+|last)+$) ]];then
+ABSOLUTE_RANGE+=("$i")
+do_shift=1
+fi
+done
+[[ -n $do_shift ]]&&shift
 ;;
 -c|--convert)_check_longoptions "$1" "$2"
 DECREASE_QUALITY="$2"
@@ -254,7 +265,7 @@ FULL_PATH_NAME="$(printf "%s/%s\n" "$(cd "$(_dirname "$NAME")" &> /dev/null&&pwd
 cd "$NAME"||exit 1
 FINAL_RANGE="${PAGES[0]}"-"${PAGES[$((${#PAGES[@]}-1))]}"
 if [[ -n $MODIFY_RANGE ]];then
-if [[ -z ${GIVEN_RANGE[*]} ]];then
+if [[ -z ${RELATIVE_RANGE[*]:-${ABSOLUTE_RANGE[*]}} ]];then
 _print_center "justify" "Input chapters" "-"
 printf "%b " "${PAGES[@]}"&&_newline "\n\n"
 "${QUIET:-_print_center}" "normal" " Give range, e.g: 1 2-10 69 " "-"
@@ -263,8 +274,10 @@ until [[ -n ${GIVEN_RANGE[*]} ]];do
 printf -- "-> "
 read -ra GIVEN_RANGE&&_GIVEN_RANGE=1
 done
+_check_and_create_range "$RANGE_MODE" "${GIVEN_RANGE[@]}"||continue
 fi
-_check_and_create_range "${GIVEN_RANGE[@]}"||continue
+[[ -n ${RELATIVE_RANGE[*]} ]]&&{ _check_and_create_range relative "${RELATIVE_RANGE[@]}"||continue;}
+[[ -n ${ABSOLUTE_RANGE[*]} ]]&&{ _check_and_create_range absolute "${ABSOLUTE_RANGE[@]}"||continue;}
 mapfile -t PAGES <<< "$(printf "%s\n" "${PAGES[@]}"|sed -e "s/^/_-_-_/g" -e "s/$/_-_-_/g")"
 for _range in "${RANGE[@]}";do
 regex=""

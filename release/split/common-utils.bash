@@ -55,7 +55,10 @@ fi
 _clear_line 1
 }
 _check_and_create_range(){
-for range in "$@";do
+declare mode="${1:?}" tmp&&shift
+case "$mode" in
+relative)for range in "$@"
+do
 unset start end _start _end
 if [[ $range =~ ^([0-9.]+)-([0-9.]+|last)+$ ]];then
 _start="${range/-*/}" _end="${range/*-/}"
@@ -91,6 +94,33 @@ else
 printf "%s\n" "Error: Invalid range ( $range )."&&return 1
 fi
 done
+;;
+absolute)_tmp=" ${PAGES[*]} "
+for range in "$@";do
+unset _start _end
+if [[ $range =~ ^([0-9.]+)-([0-9.]+|last)+$ ]];then
+_start="${range//-*/}" _end="${range//*-/}"
+[[ $_end == last ]]&&: "${#PAGES[@]}"&&_end="${PAGES[$((_-1))]}"
+[[ -n ${_tmp//* $_start */} ]]&&printf "%s\n" "Error: invalid chapter ( $_start )."&&return 1
+[[ -n ${_tmp//* $_end */} ]]&&printf "%s\n" "Error: invalid chapter ( $_end )."&&return 1
+if [[ $_start > $_end ]];then
+_start="$_end"
+_end="${range/-*/}"
+elif [[ $_start == "$_end" ]];then
+RANGE+=("$_start")
+continue
+fi
+RANGE+=("$_start${_end:+-$_end}")
+elif [[ $range =~ ^([0-9.]+|last)+$ ]];then
+{ [[ $range == last ]]&&_start="${#PAGES[@]}";}||_start="$range"
+[[ -n ${_tmp//* $_start */} ]]&&printf "%s\n" "Error: invalid chapter ( $_start )."&&return 1
+RANGE+=("$start")
+else
+printf "%s\n" "Error: Invalid range ( $range )."&&return 1
+fi
+done
+esac
+return 0
 }
 _clear_line(){
 printf "\033[%sA\033[2K" "$1"

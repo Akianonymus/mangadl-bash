@@ -338,6 +338,12 @@ These are the custom flags that are currently implemented:
 
     ---
 
+-   <strong>-ra | --range-absolute 'ranges'</strong>
+
+    Everything same as `-r | --range` flag except it uses the given range as the absolute number present on the respective website.
+
+    For example some website have a chapter name 10.1, but if counted, then it would be 11th number chapter, then this flag comes in handy.
+
 -   <strong>-c | --convert 'quality between 1 to 99'</strong>
 
     Decrease quality of images by the given percentage using convert ( imagemagick ) .\n
