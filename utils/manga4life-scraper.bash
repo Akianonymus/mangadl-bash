@@ -94,7 +94,7 @@ _fetch_manga_details_manga4life() {
 
     mapfile -t _PAGES <<< "$(grep 'vm.Chapters = ' <<< "${HTML}" | grep -Eo '[0-9]+{6}')"
     # create pages array
-    mapfile -t PAGES <<< "$(printf "%s\n" "${_PAGES[@]}" | sed -E -e "s/^[0-9]//g" -e "s/[1-9]$/.&/g" -e "s/0$//g" -e "s/^0*//g" | grep -Eo '[0-9.]+')"
+    mapfile -t PAGES <<< "$(printf "%s\n" "${_PAGES[@]}" | sed -E -e "s/^[0-9]//g" -e "s/[1-9]$/.&/g" -e "s/0$//g" -e "s/^0*//g" | grep -Eo '[0-9.]+' | sed -e "s/^\./0\./g")"
     # create index var
     while read -r -u 4 long_page && read -r -u 5 short_page; do
         export "INDEX_${short_page//./_}=${long_page:0:1}"
