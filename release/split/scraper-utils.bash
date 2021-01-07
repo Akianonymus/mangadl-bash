@@ -16,9 +16,8 @@ declare SUCCESS_STATUS=0 ERROR_STATUS=0 pid
 if [[ -n $PARALLEL_DOWNLOAD ]];then
 { [[ $NO_OF_PARALLEL_JOBS -gt ${#PAGES[@]} ]]&&NO_OF_PARALLEL_JOBS="${#PAGES[@]}";}||:
 export -f _download_chapter _download_chapter_"$SOURCE"
-printf "%s\n" "${PAGES[@]}"|xargs -n1 -P"$NO_OF_PARALLEL_JOBS" -i bash -c '
-        _download_chapter "{}"
-        ' 1> "$TMPFILE".success 2> "$TMPFILE".error&
+printf "%s\n" "${PAGES[@]}"|xargs -n1 -P"$NO_OF_PARALLEL_JOBS" -i bash -c \
+'_download_chapter "{}" true' 1> "$TMPFILE".success 2> "$TMPFILE".error&
 pid="$!"
 until [[ -f "$TMPFILE".success || -f "$TMPFILE".error ]];do sleep 0.5;done
 _newline "\n"

@@ -427,19 +427,32 @@ _process_arguments() {
                 _print_center "justify" "Quality to decrease: ${DECREASE_QUALITY}%" "=" && _newline "\n"
                 export DECREASE_QUALITY CONVERT_DIR
                 { mkdir -p "${CONVERT_DIR}" && cd "${CONVERT_DIR}" && mkdir -p "${PAGES[@]}" && cd - &> /dev/null; } || exit 1
-                export -f _head
-                printf "%s\n" "${PAGES[@]}" | xargs -n1 -P"${NO_OF_PARALLEL_JOBS:-$((CORES * 2))}" -i bash -c '
-                page="{}"
-                shopt -s extglob
-                current_quality="$(identify  -format %Q "$(printf "%b\n" "${page}/"*+(jpg|png) | _head 1)")"
-                new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"
-                if [[ ${new_quality} -lt ${current_quality} || ${image} =~ png ]] && mogrify -format jpg -path "${CONVERT_DIR}/${page}" -quality "${new_quality}" "${page}/"*+(jpg|png) &> /dev/null; then
-                    printf "1\n"
-                else
-                    printf "2\n" 1>&2
-                    cp -u "${page}/"*+(jpg|png) "${CONVERT_DIR}/${page}/"
-                fi
-                ' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
+                _convert_page() {
+                    declare page="${1:?}" copy images image current_quality new_quality
+                    mapfile -t images <<< "$(printf "%b\n%b\n" "${page}/"*jpg "${page}/"*png | grep -vE '\*png|\*jpg')"
+                    image="${images[0]}"
+                    current_quality="$(identify -format %Q "${image}")"
+                    new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"
+
+                    rm -f "${CONVERT_DIR}/${page}/"*
+                    if [[ ${new_quality} -lt ${current_quality} ]]; then
+                        mogrify -format jpg -path "${CONVERT_DIR}/${page}" -quality "${new_quality}" "${images[@]}" &> /dev/null &&
+                            { printf "1\n" || copy=1; }
+                    elif [[ ${image} =~ png ]]; then
+                        mogrify -format jpg -path "${CONVERT_DIR}/${page}" "${images[@]}" &> /dev/null &&
+                            { printf "1\n" || copy=1; }
+                    else
+                        copy=1
+                    fi
+                    [[ -n ${copy} ]] && {
+                        printf "2\n" 1>&2
+                        cp -u "${images[@]}" "${CONVERT_DIR}/${page}/"
+                    }
+                }
+
+                export -f _head _convert_page
+                printf "%s\n" "${PAGES[@]}" | xargs -P "${NO_OF_PARALLEL_JOBS:-$((CORES * 2))}" -n 1 -I "{}" bash -c \
+                    '_convert_page "{}"' 1> "${TMPFILE}".success 2> "${TMPFILE}".error &
                 pid="${!}"
 
                 until [[ -f "${TMPFILE}".success || -f "${TMPFILE}".error ]]; do sleep 0.5; done
