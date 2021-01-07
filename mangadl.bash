@@ -531,10 +531,17 @@ main() {
 
     _cleanup() {
         {
+            # grab all script children pids
+            script_children_pids="$(ps --ppid="${MAIN_PID}" -o pid=)"
+
+            # kill all grabbed children processes
+            # shellcheck disable=SC2086
+            kill ${script_children_pids} 1>| /dev/null
+
             [[ -n ${PARALLEL_DOWNLOAD} ]] && rm -f "${TMPFILE:?}"*
             export abnormal_exit && if [[ -n ${abnormal_exit} ]]; then
                 printf "\n\n%s\n" "Script exited manually."
-                kill -- -$$
+                kill -- -$$ &
             else
                 _auto_update
             fi
@@ -544,6 +551,7 @@ main() {
 
     trap 'abnormal_exit="1"; exit' INT TERM
     trap '_cleanup' EXIT
+    trap '' TSTP # ignore ctrl + z
 
     START="$(printf "%(%s)T\\n" "-1")"
     _process_arguments

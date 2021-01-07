@@ -406,10 +406,12 @@ _setup_arguments "$@"
 }
 _cleanup(){
 {
+script_children_pids="$(ps --ppid="$MAIN_PID" -o pid=)"
+kill $script_children_pids 1>| /dev/null
 [[ -n $PARALLEL_DOWNLOAD ]]&&rm -f "${TMPFILE:?}"*
 export abnormal_exit&&if [[ -n $abnormal_exit ]];then
 printf "\n\n%s\n" "Script exited manually."
-kill -- -$$
+kill -- -$$&
 else
 _auto_update
 fi
@@ -418,6 +420,7 @@ return 0
 }
 trap 'abnormal_exit="1"; exit' INT TERM
 trap '_cleanup' EXIT
+trap '' TSTP
 START="$(printf '%(%s)T\n' "-1")"
 _process_arguments
 END="$(printf '%(%s)T\n' "-1")"
