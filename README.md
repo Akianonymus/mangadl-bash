@@ -30,6 +30,7 @@
 - Mangafox / Fanfox
 - Readmanhwa
 - Manga4life
+- Gmanga
 
 ## Table of Contents
 
@@ -104,6 +105,8 @@ The script explicitly requires the following programs:
 | sed       | Miscellaneous                                          |
 | zip       | For creating zip ( -z / --zip option )                 |
 | convert   | For converting images ( -c / --convert option )        |
+| jq        | To parse json                                          |
+| openssl   | To decrypt json for gmanga                             |
 
 Note: zip and convert programs are optional, if not installed, then respective flags won't work, but rest of the script functions will be fine.
 

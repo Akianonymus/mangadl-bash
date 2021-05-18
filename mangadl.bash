@@ -281,6 +281,11 @@ _source_manga_util() {
     case "${SOURCE}" in
         *mangakakalot*) SOURCE="manganelo" ;;
         *fanfox*) SOURCE="mangafox" ;;
+        *gmanga*)
+            for c in jq openssl od; do
+                command -v "${c}" >| /dev/null || { printf "%s\n" "Install ${c} to use gmanga" && return 1; }
+            done
+            ;;
     esac
     [[ -z ${SELF_SOURCE} ]] && {
         utils_file="${UTILS_FOLDER}/${SOURCE}-scraper.bash"
@@ -303,7 +308,7 @@ _source_manga_util() {
 _process_arguments() {
     declare input utils_file _exit
 
-    _source_manga_util
+    _source_manga_util || return 1
 
     CURRENT_DIR="${PWD}"
 
@@ -429,7 +434,7 @@ _process_arguments() {
                 { mkdir -p "${CONVERT_DIR}" && cd "${CONVERT_DIR}" && mkdir -p "${PAGES[@]}" && cd - &> /dev/null; } || exit 1
                 _convert_page() {
                     declare page="${1:?}" copy images image current_quality new_quality
-                    mapfile -t images <<< "$(printf "%b\n%b\n" "${page}/"*jpg "${page}/"*png | grep -vE '\*png|\*jpg')"
+                    mapfile -t images <<< "$(printf "%b\n%b\n" "${page}/"*jpg "${page}/"*png "${page}/"*webp | grep -vE '\*png|\*jpg|\*webp')"
                     image="${images[0]}"
                     current_quality="$(identify -format %Q "${image}")"
                     new_quality="$((DECREASE_QUALITY < current_quality ? (current_quality - DECREASE_QUALITY) : current_quality))"

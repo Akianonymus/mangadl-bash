@@ -77,7 +77,7 @@ done
 fi
 _clear_line 1
 shopt -s extglob
-mapfile -t IMAGES <<< "$(_tmp="$(printf "%s/*+(jpg|png)\n" "${PAGES[@]}")"&&printf "%b\n" $_tmp)"
+mapfile -t IMAGES <<< "$(_tmp="$(printf "%s/*+(jpg|png|webp)\n" "${PAGES[@]}")"&&printf "%b\n" $_tmp)"
 TOTAL_IMAGES_SIZE="$(: "$(wc -c "${IMAGES[@]}"|_tail 1|grep -Eo '[0-9]'+)"
 printf "%s\n" "$(_bytes_to_human "$_")")"
 export TOTAL_IMAGES_SIZE IMAGES
