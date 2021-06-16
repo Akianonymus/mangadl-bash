@@ -601,28 +601,23 @@ done)"&&printf "%s\n" "$((${_//$'\n'/ + }))")"
 export TOTAL_IMAGES
 }
 _search_manga_mangahub(){
-declare input="$1" num_of_search="$2" post_data
-post_data='{"query":"{search(x:m01,q:\"'$input'\",genre:\"all\",mod:ALPHABET'${num_of_search:+,limit:$num_of_search}'){rows{title,slug,status,latestChapter}}}"}'
-SEARCH_JSON="$(curl -# --compressed https://api.mghubcdn.com/graphql \
--d "$post_data" \
--H "Content-Type: application/json")"
+declare input="$1" num_of_search="$2" html
+input="$(_url_encode "$input")"
+html="$(curl -# --compressed -L "https://mangahub.io/search?q=$input&order=ALPHABET&genre=all")"
 _clear_line 1
-SEARCH_JSON="${SEARCH_JSON//\},\{/$'\n'}"&&SEARCH_JSON="${SEARCH_JSON//\}\]/$'\n'}"
-SEARCH_JSON="$(sed -e "s/tags.*//g" <<<"$SEARCH_JSON")"
-! [[ $SEARCH_JSON =~ title ]]&&return 1
-for i in title slug status latestChapter;do
-SEARCH_JSON="${SEARCH_JSON//\"$i\"/$'\n'\"$i\"}"
-done
-mapfile -t names <<<"$(_json_value title all all <<<"$SEARCH_JSON")"
-mapfile -t slugs <<<"$(_json_value slug all all <<<"$SEARCH_JSON")"
-mapfile -t latest <<<"$(_json_value latestChapter all all <<<"$SEARCH_JSON")"
-mapfile -t status <<<"$(_json_value status all all <<<"$SEARCH_JSON")"
+[[ -z $html || $html =~ No\ Manga\ found ]]&&return 1
+html="$(: "$(grep -o "mangalist.*Popular Manga Updates" <<<"$html")"&&printf "%s\n" "${_//media-manga/$'\n'media-manga}"|grep "" -m "$((num_of_search+1))")"
+mapfile -t names <<<"$(printf "%s\n" "${html//alt/$'\n'alt}"|grep -o 'alt=.*'|sed -E -e "s/ class.*//g" -e 's/^alt="//g' -e "s/\"$//g")"
+_tmp="$(: "$(grep -Eo "(http|https)://mangahub.io/chapter/[a-zA-Z0-9./?=_%:-]+/chapter-[0-9]+" <<<"$html")"&&printf "%s\n" "${_//http[s]:\/\/mangahub.io\/chapter\//}")"
+mapfile -t slugs <<<"$(printf "%s\n" "$_tmp"|sed -E 's/\/chapter-[0-9]+$//g')"
+mapfile -t latest <<<"$(printf "%s\n" "$_tmp"|sed -E 's/.*\/chapter-//g')"
+mapfile -t status <<<"$(grep -oF -e "-- -->(Ongoing)" -e "-- -->(Completed)" <<<"$html"|grep -iEo 'Ongoing|Completed')"
 i=1
 while read -r -u 4 name&&read -r -u 5 _latest&&read -r -u 6 _status&&read -r -u 7 _slug;do
 num="$((i++))"
 OPTION_NAMES+=("$num. $name
    URL: https://mangahub.io/manga/$_slug 
-   Latest: $_latest
+   Latest: Chapter $_latest
    Status: $_status")
 done 4<<<"$(printf "%s\n" "${names[@]}")" 5<<<"$(printf "%s\n" "${latest[@]}")" 6<<<"$(printf "%s\n" "${status[@]}")" 7<<<"$(printf "%s\n" "${slugs[@]}")"
 TOTAL_SEARCHES="${#names[@]}"
@@ -636,33 +631,26 @@ LATEST="${latest[$((option-1))]}"
 export SLUG NAME LATEST
 }
 _fetch_manga_details_mangahub(){
-declare slug fetch_name="${2:-}" json
-slug="$(_basename "${1:-$SLUG}")"
-_print_center "justify" "Retrieving mangaid.." "-"
-json="$(curl -# --compressed https://api.mghubcdn.com/graphql \
--d '{"query":"{chapter(x:m01,slug:\"'"$slug"'\",number:'"${LATEST:-1}"'){mangaID'${fetch_name:+,manga\{title\}}'}}"}' \
--H "Content-Type: application/json")"
+declare fetch_name="${2:-}" html
+SLUG="$(_basename "${1:-$SLUG}")"
+html="$(curl -# --compressed -L "https://mangahub.io/manga/$SLUG")"
 for _ in {1..2};do _clear_line 1;done
-[[ $json == *"Cannot read property"* ]]&&return 1
-MANGAID="$(_regex "$json" '[0-9.]+' 0)"
-[[ -n $fetch_name ]]&&NAME="$(: "${json//*title\":\"/}"&&printf "%s\n" "${_/\"\}*/}")"
-_print_center "justify" "Retrieving manga" " chapters.." "-"
-mapfile -t PAGES <<<"$(curl -# --compressed https://api.mghubcdn.com/graphql \
--d '{"query":"{chaptersByManga(mangaID:'"$MANGAID"'){number}}"}' \
--H "Content-Type: application/json"|grep -Eo "[0-9.]+")"
-for _ in {1..2};do _clear_line 1;done
-export MANGAID PAGES NAME REFERER="mangahub.io"
+[[ $html == *"ERROR : MANGA NOT FOUND"* ]]&&return 1
+[[ -n $fetch_name ]]&&NAME="$(: "$(grep -o 'title>.*</title' <<<"$html")"&&: "${_//*title>Read /}"&&printf "%s\n" "${_// Manga Online for Free<\/title*/}")"
+mapfile -t PAGES <<<"$(grep -Eo "(http|https)://mangahub.io/chapter/$SLUG/chapter-[0-9]+" <<<"$html"|sed "s/.*\///g"|grep -oE '[0-9.]+')"
+mapfile -t PAGES <<<"$(_reverse "${PAGES[@]}")"
+mapfile -t PAGES <<<"$(_remove_array_duplicates "${PAGES[@]}")"
+export SLUG PAGES NAME REFERER="mangahub.io"
 }
 _download_chapter_mangahub(){
-curl -s -L --compressed https://api.mghubcdn.com/graphql \
--d '{"query":"{chapter(x:m01,slug:\"'"$SLUG"'\",number:'"$page"'){pages}}"}' \
--H "Content-Type: application/json" -w "\n%{http_code}\n"
+curl -s -L --compressed "https://mangahub.io/chapter/$SLUG/chapter-$page" -w "\n%{http_code}\n"
 }
 _count_images_mangahub(){
 TOTAL_IMAGES="$(: "$(for page in "${PAGES[@]}";do
 {
-json_images="$(<"$page/$page"_chapter)"
-printf "%b\n" "${json_images//:\\\"/$"\n"https://img.mghubcdn.com/file/imghub/}"|grep -Eo ".*(jpg|png)+" >|"$page/$page"_images
+: "$(grep -Eo '_3w1ww">[0-9]/[0-9]+' "$page/$page"_chapter|_head 1)"&&total_images="${_//*\//}"
+: "$(grep -Eo "https://img.mghubcdn.com/file/imghub/$SLUG/$page/[0-9]+.(jpg|png)" "$page/$page"_chapter|_head 1)"&&extension="${_//*.jpg/jpg}"&&extension="${extension//*.png/png}"
+eval printf "https://img.mghubcdn.com/file/imghub/$SLUG/$page/%s.$extension\\\n" "{1..$total_images}" >|"$page/$page"_images
 _count <"$page/$page"_images
 }&
 done)"&&printf "%s\n" "$((${_//$'\n'/ + }))")"
