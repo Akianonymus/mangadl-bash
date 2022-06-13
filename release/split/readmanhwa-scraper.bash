@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _search_manga_readmanhwa(){
 declare input="$1" num_of_search="$2"
 SEARCH_JSON="$(curl -# --compressed "https://readmanhwa.com/api/comics?nsfw=true&q=$(_url_encode "$input")&per_page=$num_of_search&sort=title" \

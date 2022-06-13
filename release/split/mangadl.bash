@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _usage(){
 printf "%b" "
 The script can be used to search and download mangas from various sources.\n
@@ -35,13 +36,15 @@ exit
 }
 _auto_update(){
 export REPO
-(_REPO="$REPO"
+(\
+_REPO="$REPO"
 command -v "$COMMAND_NAME" 1> /dev/null&&if [[ -n ${_REPO:+${COMMAND_NAME:+${INSTALL_PATH:+${TYPE:+$TYPE_VALUE}}}} ]];then
 current_time="$(printf '%(%s)T\n' "-1")"
 [[ $((LAST_UPDATE_TIME+AUTO_UPDATE_INTERVAL)) -lt $current_time ]]&&_update
 _update_value LAST_UPDATE_TIME "$current_time"
 fi) \
-2>| /dev/null 1>&2&
+2>| /dev/null \
+1>&2&
 return 0
 }
 _update(){
@@ -88,7 +91,7 @@ unset DEBUG FOLDER SOURCE NO_OF_PARALLEL_JOBS PARALLEL_DOWNLOAD MAX_BACKGROUD_JO
 MODIFY_RANGE GIVEN_RANGE ABSOLUTE_GIVEN_RANGE DECREASE_QUALITY CONVERT CONVERT_DIR CREATE_ZIP UPLOAD_ZIP SKIP_INTERNET_CHECK INPUT_ARRAY
 CONFIG="$HOME/.mangadl-bash.conf"
 [[ -f $CONFIG ]]&&. "$CONFIG"
-SOURCE="${SOURCE:-mangahub}"
+SOURCE="${SOURCE:-mangafox}"
 _check_longoptions(){
 [[ -z $2 ]]&&printf '%s: %s: option requires an argument\nTry '"%s -h/--help"' for more information.\n' "${0##*/}" "$1" "${0##*/}"&&exit 1
 return 0
@@ -123,7 +126,8 @@ fi
 _NUM_OF_SEARCH="${2/default=/}"
 { [[ $2 == default* ]]&&UPDATE_DEFAULT_NUM_OF_SEARCH="_update_config";}||:
 case "$_NUM_OF_SEARCH" in
-all|*[0-9]*)NUM_OF_SEARCH="$2"
+all|*[0-9]*)\
+NUM_OF_SEARCH="$2"
 ;;
 *)printf "\nError: -n/--num accept arguments as postive integets.\n"
 exit 1
@@ -143,7 +147,10 @@ esac
 PARALLEL_DOWNLOAD="true"&&export PARALLEL_DOWNLOAD
 shift
 ;;
--r|--range)MODIFY_RANGE="true" RANGE_MODE="relative" do_shift=""
+-r|--range)\
+MODIFY_RANGE="true" \
+RANGE_MODE="relative" \
+do_shift=""
 for i in $2;do
 if [[ $i =~ (^([0-9]+)-([0-9]+|last)+$|^([0-9]+|last)+$) ]];then
 RELATIVE_RANGE+=("$i")
@@ -152,7 +159,10 @@ fi
 done
 [[ -n $do_shift ]]&&shift
 ;;
--ra|--range-absolute)MODIFY_RANGE="true" RANGE_MODE="absolute" do_shift=""
+-ra|--range-absolute)\
+MODIFY_RANGE="true" \
+RANGE_MODE="absolute" \
+do_shift=""
 for i in $2;do
 if [[ $i =~ (^([0-9.]+)-([0-9.]+|last)+$|^([0-9.]+|last)+$) ]];then
 ABSOLUTE_RANGE+=("$i")
@@ -189,7 +199,7 @@ esac
 shift
 done
 _check_debug
-SOURCE="${SOURCE:-mangahub}"
+SOURCE="${SOURCE:-mangafox}"
 "${UPDATE_DEFAULT_SOURCE:-:}" SOURCE "$SOURCE" "$CONFIG"
 NUM_OF_SEARCH="${NUM_OF_SEARCH:-10}"
 "${UPDATE_DEFAULT_NUM_OF_SEARCH:-:}" NUM_OF_SEARCH "$NUM_OF_SEARCH" "$CONFIG"

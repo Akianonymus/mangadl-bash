@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _basename(){
 declare tmp
 tmp=${1%"${1##*[!/]}"}
@@ -95,7 +96,8 @@ printf "%s\n" "Error: Invalid range ( $range )."&&return 1
 fi
 done
 ;;
-absolute)_tmp=" ${PAGES[*]} "
+absolute)\
+_tmp=" ${PAGES[*]} "
 for range in "$@";do
 unset _start _end
 if [[ $range =~ ^([0-9.]+)-([0-9.]+|last)+$ ]];then
@@ -149,10 +151,12 @@ printf '%d seconds\n' "$SEC"
 _get_latest_sha(){
 declare LATEST_SHA
 case "${1:-$TYPE}" in
-branch)LATEST_SHA="$(: "$(curl --compressed -s https://github.com/"${3:-$REPO}"/commits/"${2:-$TYPE_VALUE}".atom -r 0-2000)"
+branch)\
+LATEST_SHA="$(: "$(curl --compressed -s https://github.com/"${3:-$REPO}"/commits/"${2:-$TYPE_VALUE}".atom -r 0-2000)"
 : "$(printf "%s\n" "$_"|grep -o 'Commit\/.*<' -m1||:)"&&: "${_##*\/}"&&printf "%s\n" "${_%%<*}")"
 ;;
-release)LATEST_SHA="$(: "$(curl -L --compressed -s https://github.com/"${3:-$REPO}"/releases/"${2:-$TYPE_VALUE}")"
+release)\
+LATEST_SHA="$(: "$(curl -L --compressed -s https://github.com/"${3:-$REPO}"/releases/"${2:-$TYPE_VALUE}")"
 : "$(printf "%s\n" "$_"|grep '="/'"${3:-$REPO}""/commit" -m1||:)"&&: "${_##*commit\/}"&&printf "%s\n" "${_%%\"*}")"
 esac
 printf "%b" "${LATEST_SHA:+$LATEST_SHA\n}"

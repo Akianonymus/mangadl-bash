@@ -134,7 +134,7 @@ _setup_arguments() {
 
     CONFIG="${HOME}/.mangadl-bash.conf"
     [[ -f ${CONFIG} ]] && . "${CONFIG}"
-    SOURCE="${SOURCE:-mangahub}"
+    SOURCE="${SOURCE:-mangafox}"
 
     _check_longoptions() {
         [[ -z ${2} ]] &&
@@ -256,7 +256,7 @@ _setup_arguments() {
 
     _check_debug
 
-    SOURCE="${SOURCE:-mangahub}"
+    SOURCE="${SOURCE:-mangafox}"
     "${UPDATE_DEFAULT_SOURCE:-:}" SOURCE "${SOURCE}" "${CONFIG}"
     NUM_OF_SEARCH="${NUM_OF_SEARCH:-10}"
     "${UPDATE_DEFAULT_NUM_OF_SEARCH:-:}" NUM_OF_SEARCH "${NUM_OF_SEARCH}" "${CONFIG}"

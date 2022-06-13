@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _search_manga_gmanga(){
 declare input="$1" num_of_search="$2" post_data search_json
 post_data="$(jq -n --arg q "$input" '{query: $q, includes:["Manga"]}')"

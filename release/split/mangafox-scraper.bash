@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _search_manga_mangafox(){
 declare input="${1// /+}" num_of_search="$2"
 SEARCH_HTML="$(curl -# --compressed http://m.fanfox.net/search?k="$(_url_encode "$input" +)")"

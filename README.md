@@ -26,7 +26,6 @@
 ## Supported sources
 
 - Manganelo / Mangakakalot
-- Mangahub
 - Mangafox / Fanfox
 - Readmanhwa
 - Manga4life

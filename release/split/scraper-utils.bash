@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _download_chapter(){
 declare page="$1" parallel="$2"
 if [[ -f "$page/$page"_chapter && $(_tail 1 < "$page/$page"_chapter) =~ 200 ]];then

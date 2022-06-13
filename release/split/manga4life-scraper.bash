@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 _search_manga_manga4life(){
 declare file_path="$HOME/.manga4life.list"
 fetch="true"
