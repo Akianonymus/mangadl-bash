@@ -3,7 +3,6 @@
 <a href="https://github.com/Akianonymus/mangadl-bash/stargazers"><img src="https://img.shields.io/github/stars/Akianonymus/mangadl-bash.svg?color=blueviolet&style=for-the-badge" alt="Stars"></a>
 </p>
 <p align="center">
-<a href="https://www.codacy.com/manual/Akianonymus/mangadl-bash?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Akianonymus/mangadl-bash&amp;utm_campaign=Badge_Grade"><img alt="Codacy grade" src="https://img.shields.io/codacy/grade/62f44daae6f548978d7d3daae5d6074c/master?style=for-the-badge"></a>
 <a href="https://github.com/Akianonymus/mangadl-bash/actions"><img alt="Github Action Checks" src="https://img.shields.io/github/workflow/status/Akianonymus/mangadl-bash/Checks/master?label=CI%20Checks&style=for-the-badge"></a>
 </p>
 <p align="center">
