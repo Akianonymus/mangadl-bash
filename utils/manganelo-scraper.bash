@@ -13,7 +13,7 @@ _search_manga_manganelo() {
 
     mapfile -t names <<< "$(grep "story_name" -A 1 <<< "${SEARCH_HTML}" | grep -E "(http|https)://[a-zA-Z0-9./?=_%:-]*" | grep -o '>.*<' | sed "s/\(^>\|<$\)//g")"
     mapfile -t urls <<< "$(grep "story_name" -A 1 <<< "${SEARCH_HTML}" | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*")"
-    mapfile -t latest <<< "$(: "$(grep "story_chapter" -A 1 <<< "${SEARCH_HTML}" | grep -v '</a>\|story_chapter' | grep -o 'title=\".*\"')" && printf "%s\n" "${_//title=/}")"
+    mapfile -t latest <<< "$(: "$(grep "story_chapter" -A 1 <<< "${SEARCH_HTML}" | grep -v '</a>\|story_chapter' | grep -o 'title=".*"')" && printf "%s\n" "${_//title=/}")"
     mapfile -t updated <<< "$(grep -o "Updated.*[0-9]" <<< "${SEARCH_HTML}")"
 
     i=1
