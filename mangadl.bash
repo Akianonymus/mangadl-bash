@@ -279,7 +279,7 @@ _setup_arguments() {
 _source_manga_util() {
     SOURCE="${1:-${SOURCE}}"
     case "${SOURCE}" in
-        *mangakakalot*) SOURCE="manganelo" ;;
+        *mangakakalot* | *manganato*) SOURCE="manganelo" ;;
         *fanfox*) SOURCE="mangafox" ;;
         *gmanga*)
             for c in jq openssl od; do
